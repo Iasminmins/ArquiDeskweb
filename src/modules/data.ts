@@ -28,9 +28,9 @@ export const stageSuccess: Partial<Record<Stage, string>> = {
 
 export const statusByStage: Record<Stage, string[]> = {
   PROJETO: ["Sondagem", "Medição", "Projeto", "Pronto para apresentação"],
-  NEGOCIACAO: ["Detalhamento de venda"],
-  CONFERENCIA: ["Medição", "Conferência", "Detalhamento"],
-  MONTAGEM: ["Vistoria de montagem", "Agendada", "Em montagem", "Pendente"],
+  NEGOCIACAO: ["Detalhamento de venda", "Proposta enviada", "Em negociação", "Aguardando retorno", "Fechado", "Perdido"],
+  CONFERENCIA: ["Medição", "Conferência", "Detalhamento", "Ajuste pendente", "Liberado para fábrica"],
+  MONTAGEM: ["Vistoria de montagem", "Agendada", "Início da montagem", "Em montagem", "Pendente", "Finalizada"],
   ASSISTENCIA: ["Aberta", "Em atendimento", "Aguardando peça"],
   FINALIZADO: ["Finalizado"],
 };

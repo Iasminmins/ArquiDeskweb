@@ -5,7 +5,7 @@ import { Button, EmptyState, Modal } from "../components/ui";
 import { formatDate, formatMoney, toCsv, downloadText } from "../lib/format";
 import { supabase } from "../lib/supabase";
 import type { ClientProject, FlowHistory, Stage } from "../lib/types";
-import { getProjectHistory, getProjects, moveProject, nextStage, stageSuccess, stageTitle } from "./data";
+import { getProjectHistory, getProjects, moveProject, nextStage, stageSuccess, stageTitle, statusByStage } from "./data";
 import { ProjectForm } from "./ProjectForm";
 
 const advanceLabel: Partial<Record<Stage, string>> = {
@@ -75,6 +75,28 @@ export function StagePage({ ctx, stage }: { ctx: AppContext; stage: Stage }) {
     load();
   }
 
+  function statusFieldFor(project: ClientProject) {
+    if (project.current_stage === "PROJETO") return "project_status";
+    if (project.current_stage === "NEGOCIACAO") return "negotiation_status";
+    if (project.current_stage === "CONFERENCIA") return "conference_status";
+    if (project.current_stage === "MONTAGEM") return "assembly_status";
+    if (project.current_stage === "ASSISTENCIA") return "assistance_status";
+    return null;
+  }
+
+  function displayStatus(project: ClientProject) {
+    return project.project_status || project.negotiation_status || project.conference_status || project.assembly_status || project.assistance_status || "Finalizado";
+  }
+
+  async function updateInlineStatus(project: ClientProject, status: string) {
+    const field = statusFieldFor(project);
+    if (!field) return;
+    const { error } = await supabase.from("client_projects").update({ [field]: status }).eq("id", project.id);
+    if (error) return ctx.toast("error", error.message);
+    setItems((current) => current.map((item) => item.id === project.id ? { ...item, [field]: status } : item));
+    ctx.toast("success", "Status atualizado com sucesso.");
+  }
+
   function exportRows() {
     const csv = toCsv(rows.map((item) => ({
       cliente: item.client_name,
@@ -126,10 +148,17 @@ export function StagePage({ ctx, stage }: { ctx: AppContext; stage: Stage }) {
                     </td>
                     <td className="p-3">{item.project_name}</td>
                     <td className="p-3">{item.designer?.name || "-"}</td>
-                    <td className="p-3">{item.project_status || item.negotiation_status || item.conference_status || item.assembly_status || item.assistance_status || "Finalizado"}</td>
+                    <td className="p-3">
+                      {canEditStage && statusFieldFor(item) ? (
+                        <select className="min-h-10 w-full min-w-44 rounded-md border border-line bg-white px-2 text-sm outline-none focus:border-moss" value={displayStatus(item)} onChange={(event) => updateInlineStatus(item, event.target.value)}>
+                          {statusByStage[item.current_stage].map((status) => <option key={status} value={status}>{status}</option>)}
+                        </select>
+                      ) : displayStatus(item)}
+                    </td>
                     <td className="p-3 text-xs text-ink/65">
                       Entrada: {formatDate(item.entry_date)}<br />
                       Apresentação: {formatDate(item.presentation_date)}<br />
+                      Início montagem: {formatDate(item.assembly_started_date)}<br />
                       Fechamento: {formatDate(item.closing_date)}
                     </td>
                     <td className="p-3">{formatMoney(item.closed_value)}</td>
