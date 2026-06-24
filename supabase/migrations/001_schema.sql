@@ -54,6 +54,7 @@ create table public.client_projects (
   assembly_started_date date,
   assembly_finished_date date,
   assistance_status text,
+  assistance_date date,
   order_date date,
   finished_at timestamptz,
   notes text,

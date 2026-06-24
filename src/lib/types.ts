@@ -47,6 +47,7 @@ export type ClientProject = {
   assembly_started_date: string | null;
   assembly_finished_date: string | null;
   assistance_status: string | null;
+  assistance_date: string | null;
   order_date: string | null;
   finished_at: string | null;
   notes: string | null;

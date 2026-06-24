@@ -182,6 +182,7 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
       assembly_started_date: dateValue(row, "Data inicio montagem"),
       assembly_finished_date: dateValue(row, "Data fim montagem"),
       assistance_status: text(row, "Status assistencia") || null,
+      assistance_date: dateValue(row, "Data assistencia"),
       order_date: dateValue(row, "Data pedido"),
       notes: text(row, "Observacoes") || null,
     }));
@@ -329,6 +330,7 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
       "Data inicio montagem": project.assembly_started_date || "",
       "Data fim montagem": project.assembly_finished_date || "",
       "Status assistencia": project.assistance_status || "",
+      "Data assistencia": project.assistance_date || "",
       "Data pedido": project.order_date || "",
       Observacoes: project.notes || "",
       "Projetista responsavel": project.designer?.name || "",

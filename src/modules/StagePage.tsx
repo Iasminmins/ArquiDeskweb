@@ -88,6 +88,41 @@ export function StagePage({ ctx, stage }: { ctx: AppContext; stage: Stage }) {
     return project.project_status || project.negotiation_status || project.conference_status || project.assembly_status || project.assistance_status || "Finalizado";
   }
 
+  function dateRows(project: ClientProject): Array<[string, string | null | undefined]> {
+    if (project.current_stage === "PROJETO") {
+      return [
+        ["Entrada", project.entry_date],
+        ["Apresentação", project.presentation_date],
+      ];
+    }
+    if (project.current_stage === "NEGOCIACAO") {
+      return [
+        ["Entrada", project.entry_date],
+        ["Apresentação", project.presentation_date],
+        ["Fechamento", project.closing_date],
+      ];
+    }
+    if (project.current_stage === "CONFERENCIA") {
+      return [
+        ["Envio fábrica", project.sent_to_factory_date],
+        ["Faturamento", project.billing_date],
+      ];
+    }
+    if (project.current_stage === "MONTAGEM") {
+      return [
+        ["Início montagem", project.assembly_started_date],
+        ["Fim montagem", project.assembly_finished_date],
+      ];
+    }
+    if (project.current_stage === "ASSISTENCIA") {
+      return [
+        ["Pedido", project.order_date],
+        ["Assistência", project.assistance_date],
+      ];
+    }
+    return [["Finalizado", project.finished_at]];
+  }
+
   async function updateInlineStatus(project: ClientProject, status: string) {
     const field = statusFieldFor(project);
     if (!field) return;
@@ -156,10 +191,9 @@ export function StagePage({ ctx, stage }: { ctx: AppContext; stage: Stage }) {
                       ) : displayStatus(item)}
                     </td>
                     <td className="p-3 text-xs text-ink/65">
-                      Entrada: {formatDate(item.entry_date)}<br />
-                      Apresentação: {formatDate(item.presentation_date)}<br />
-                      Início montagem: {formatDate(item.assembly_started_date)}<br />
-                      Fechamento: {formatDate(item.closing_date)}
+                      {dateRows(item).map(([label, value]) => (
+                        <span key={label} className="block">{label}: {formatDate(value)}</span>
+                      ))}
                     </td>
                     <td className="p-3">{formatMoney(item.closed_value)}</td>
                     <td className="p-3">

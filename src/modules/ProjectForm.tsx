@@ -25,6 +25,7 @@ type FormState = {
   assembly_started_date: string;
   assembly_finished_date: string;
   assistance_status: string;
+  assistance_date: string;
   order_date: string;
   notes: string;
 };
@@ -50,6 +51,7 @@ function initial(project?: ClientProject, stage?: Stage, profile?: Profile): For
     assembly_started_date: project?.assembly_started_date || "",
     assembly_finished_date: project?.assembly_finished_date || "",
     assistance_status: project?.assistance_status || "Aberta",
+    assistance_date: project?.assistance_date || "",
     order_date: project?.order_date || "",
     notes: project?.notes || "",
   };
@@ -102,6 +104,7 @@ export function ProjectForm({
       assembly_started_date: form.assembly_started_date || null,
       assembly_finished_date: form.assembly_finished_date || null,
       assistance_status: form.assistance_status || null,
+      assistance_date: form.assistance_date || null,
       order_date: form.order_date || null,
       notes: form.notes || null,
     };
@@ -169,6 +172,7 @@ export function ProjectForm({
         {stage === "ASSISTENCIA" ? (
           <>
             <Field label="Status"><select className={inputClass} value={form.assistance_status} onChange={(e) => set("assistance_status", e.target.value)}>{statusByStage.ASSISTENCIA.map((s) => <option key={s}>{s}</option>)}</select></Field>
+            <Field label="Data da assistência"><input className={inputClass} type="date" value={form.assistance_date} onChange={(e) => set("assistance_date", e.target.value)} /></Field>
             <Field label="Data do pedido"><input className={inputClass} type="date" value={form.order_date} onChange={(e) => set("order_date", e.target.value)} /></Field>
           </>
         ) : null}
