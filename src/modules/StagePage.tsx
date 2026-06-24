@@ -85,7 +85,12 @@ export function StagePage({ ctx, stage }: { ctx: AppContext; stage: Stage }) {
   }
 
   function displayStatus(project: ClientProject) {
-    return project.project_status || project.negotiation_status || project.conference_status || project.assembly_status || project.assistance_status || "Finalizado";
+    if (project.current_stage === "PROJETO") return project.project_status || "Sondagem";
+    if (project.current_stage === "NEGOCIACAO") return project.negotiation_status || "Detalhamento de venda";
+    if (project.current_stage === "CONFERENCIA") return project.conference_status || "Medição";
+    if (project.current_stage === "MONTAGEM") return project.assembly_status || "Vistoria de montagem";
+    if (project.current_stage === "ASSISTENCIA") return project.assistance_status || "Aberta";
+    return "Finalizado";
   }
 
   function dateRows(project: ClientProject): Array<[string, string | null | undefined]> {

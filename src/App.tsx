@@ -8,6 +8,7 @@ import { AuthPage } from "./components/AuthPage";
 import { Layout } from "./components/Layout";
 import { Toasts, type ToastMessage } from "./components/Toast";
 import { Dashboard } from "./modules/Dashboard";
+import { SchedulePage } from "./modules/SchedulePage";
 import { StagePage } from "./modules/StagePage";
 import { FinancePage } from "./modules/FinancePage";
 import { GoalsPage } from "./modules/GoalsPage";
@@ -117,6 +118,7 @@ export default function App() {
     if (blocked && protectedBySubscription && ctx.profile.role !== "SUPER_ADMIN") return <SubscriptionPage ctx={ctx} blocked />;
     if (stageByNav[active]) return <StagePage ctx={ctx} stage={stageByNav[active]!} />;
     if (active === "dashboard") return <Dashboard ctx={ctx} />;
+    if (active === "schedule") return <SchedulePage ctx={ctx} />;
     if (active === "finance") return <FinancePage ctx={ctx} />;
     if (active === "goals" || active === "my-goal" || active === "team-goals") return <GoalsPage ctx={ctx} mode={active} />;
     if (active === "import-export" || active === "my-exports" || active === "ops-exports") return <ImportExportPage ctx={ctx} mode={active} />;
