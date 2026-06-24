@@ -292,8 +292,123 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
     }
   }
 
+  function downloadTemplate() {
+    const link = document.createElement("a");
+    link.href = "/templates/modelo_importacao_completa_arquidesk.xlsx";
+    link.download = "modelo_importacao_completa_arquidesk.xlsx";
+    link.click();
+  }
+
+  async function exportCompleteWorkbook(companyId: string) {
+    const [{ data: projects }, { data: sales }, { data: goals }, { data: employees }, { data: history }] = await Promise.all([
+      getProjects(companyId, undefined, ctx.profile),
+      getSales(companyId, ctx.profile.role === "PROJETISTA" ? ctx.profile : undefined),
+      supabase.from("designer_goals").select("*, designer:profiles!designer_goals_designer_id_fkey(id,name,email)").eq("company_id", companyId),
+      supabase.from("profiles").select("name,email,role,active").eq("company_id", companyId).order("name"),
+      supabase.from("flow_history").select("*, user:profiles!flow_history_user_id_fkey(id,name)").eq("company_id", companyId).order("created_at", { ascending: false }),
+    ]);
+
+    const workbook = XLSX.utils.book_new();
+    const projectRows = (projects || []).map((project) => ({
+      "Nome do cliente": project.client_name,
+      Telefone: project.client_phone,
+      "Nome do projeto": project.project_name,
+      Status: project.project_status || "",
+      "Data de entrada": project.entry_date || "",
+      "Endereco do cliente": project.client_address || "",
+      "Data de apresentacao": project.presentation_date || "",
+      "Status da negociacao": project.negotiation_status || "",
+      "Valor nova proposta": project.new_proposal_value || "",
+      "Valor fechado": project.closed_value || "",
+      "Data de fechamento": project.closing_date || "",
+      "Status conferencia": project.conference_status || "",
+      "Data envio fabrica": project.sent_to_factory_date || "",
+      "Data faturamento": project.billing_date || "",
+      "Status montagem": project.assembly_status || "",
+      "Data fim montagem": project.assembly_finished_date || "",
+      "Status assistencia": project.assistance_status || "",
+      "Data pedido": project.order_date || "",
+      Observacoes: project.notes || "",
+      "Projetista responsavel": project.designer?.name || "",
+      "Etapa desejada": project.current_stage,
+    }));
+
+    const saleRows = (sales || []).map((sale) => ({
+      Cliente: sale.client_name,
+      Projeto: sale.project_name,
+      Projetista: sale.designer?.name || "",
+      "Valor vendido": sale.sold_value,
+      "Forma de pagamento": sale.payment_method,
+      "Data da venda": sale.sale_date,
+      Observacoes: sale.notes || "",
+    }));
+
+    const paymentRows = (sales || []).flatMap((sale) =>
+      (sale.payments || []).map((payment) => ({
+        Cliente: sale.client_name,
+        Projeto: sale.project_name,
+        "Numero do pagamento": payment.payment_number,
+        "Valor pago": payment.amount,
+        "Data de pagamento": payment.payment_date,
+        Forma: sale.payment_method,
+        Projetista: sale.designer?.name || "",
+        Observacoes: "",
+      })),
+    );
+
+    const goalRows = (goals || []).map((goal: any) => ({
+      Projetista: goal.designer?.name || "",
+      Mes: goal.month,
+      Ano: goal.year,
+      "Valor da meta": goal.goal_amount,
+      Observacoes: "",
+      Status: "Ativa",
+    }));
+
+    const employeeRows = (employees || []).map((employee) => ({
+      Nome: employee.name,
+      "E-mail": employee.email,
+      Permissao: employee.role,
+      Ativo: employee.active ? "Sim" : "Nao",
+      Telefone: "",
+      Observacoes: "",
+    }));
+
+    const historyRows = (history || []).map((row: any) => ({
+      Acao: row.action,
+      "Etapa origem": row.from_stage || "",
+      "Etapa destino": row.to_stage,
+      Usuario: row.user?.name || "",
+      Observacoes: row.notes || "",
+      "Criado em": row.created_at,
+    }));
+
+    [
+      ["Projetos", projectRows],
+      ["Vendas financeiras", saleRows],
+      ["Pagamentos financeiros", paymentRows],
+      ["Metas dos projetistas", goalRows],
+      ["Funcionarios", employeeRows],
+      ["Historico", historyRows],
+    ].forEach(([name, rows]) => {
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows as Record<string, unknown>[]), String(name));
+    });
+
+    XLSX.writeFile(workbook, "arquidesk-completo.xlsx");
+  }
+
   async function exportData(format: "csv" | "xlsx" | "pdf") {
     if (!ctx.profile.company_id) return;
+    if (type === "Completo Arquidesk") {
+      if (format !== "xlsx") {
+        ctx.toast("error", "Exportacao completa esta disponivel em XLSX.");
+        return;
+      }
+      await exportCompleteWorkbook(ctx.profile.company_id);
+      await supabase.from("export_logs").insert({ company_id: ctx.profile.company_id, type, format, filters: {}, created_by_user_id: ctx.profile.id });
+      ctx.toast("success", "Exportacao completa gerada com sucesso.");
+      return;
+    }
     const data = type === "Financeiro" || type === "Pagamentos" ? (await getSales(ctx.profile.company_id, ctx.profile.role === "PROJETISTA" ? ctx.profile : undefined)).data || [] : (await getProjects(ctx.profile.company_id, undefined, ctx.profile)).data || [];
     const flat = data.map((item: any) => ({
       cliente: item.client_name,
@@ -323,7 +438,10 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
       <div className="grid gap-4 lg:grid-cols-2">
         {admin ? (
           <section className="grid gap-4 rounded-lg border border-line bg-white p-4">
-            <h3 className="font-bold">Importar</h3>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="font-bold">Importar</h3>
+              <Button type="button" variant="secondary" onClick={downloadTemplate}><Download size={17} /> Baixar modelo</Button>
+            </div>
             <Field label="Tipo">
               <select className={inputClass} value={type} onChange={(event) => { setType(event.target.value); setRows([]); setSheets({}); setSummary([]); }}>
                 <option>Completo Arquidesk</option>
@@ -346,7 +464,7 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
         ) : null}
         <section className="grid gap-4 rounded-lg border border-line bg-white p-4">
           <h3 className="font-bold">Exportar</h3>
-          <Field label="Dados"><select className={inputClass} value={type} onChange={(event) => setType(event.target.value)}><option>Projeto</option><option>Negociacao</option><option>Conferencia</option><option>Montagem</option><option>Assistencia</option><option>Finalizados</option><option>Financeiro</option><option>Pagamentos</option><option>Metas</option><option>Historico de movimentacoes</option></select></Field>
+          <Field label="Dados"><select className={inputClass} value={type} onChange={(event) => setType(event.target.value)}><option>Completo Arquidesk</option><option>Projeto</option><option>Negociacao</option><option>Conferencia</option><option>Montagem</option><option>Assistencia</option><option>Finalizados</option><option>Financeiro</option><option>Pagamentos</option><option>Metas</option><option>Historico de movimentacoes</option></select></Field>
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={() => exportData("csv")}><Download size={17} /> CSV</Button>
             <Button variant="secondary" onClick={() => exportData("xlsx")}><Download size={17} /> XLSX</Button>
