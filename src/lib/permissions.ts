@@ -42,7 +42,7 @@ export const roleNav: Record<Role, NavKey[]> = {
     "subscription",
   ],
   PROJETISTA: ["dashboard", "projects", "negotiations", "conference", "assembly", "assistance", "my-goal", "my-exports"],
-  CONFERENTE: ["dashboard", "team-goals", "conference", "assembly", "assistance", "ops-exports"],
+  CONFERENTE: ["dashboard", "projects", "negotiations", "conference", "assembly", "assistance", "finished", "finance", "team-goals", "ops-exports"],
   SUPER_ADMIN: ["saas-dashboard", "companies", "plans", "subscriptions", "global-users", "saas-settings"],
 };
 

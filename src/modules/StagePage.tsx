@@ -39,6 +39,7 @@ export function StagePage({ ctx, stage }: { ctx: AppContext; stage: Stage }) {
     const term = filter.toLowerCase();
     return items.filter((item) => `${item.client_name} ${item.project_name} ${item.designer?.name || ""}`.toLowerCase().includes(term));
   }, [items, filter]);
+  const canEditStage = ctx.profile.role !== "CONFERENTE" || ["CONFERENCIA", "MONTAGEM", "ASSISTENCIA"].includes(stage);
 
   async function advance(project: ClientProject) {
     const to = nextStage[project.current_stage];
@@ -124,7 +125,7 @@ export function StagePage({ ctx, stage }: { ctx: AppContext; stage: Stage }) {
                     <td className="p-3">{formatMoney(item.closed_value)}</td>
                     <td className="p-3">
                       <div className="flex justify-end gap-2">
-                        <Button variant="secondary" title="Editar" onClick={() => setEditing(item)}><Pencil size={16} /></Button>
+                        {canEditStage ? <Button variant="secondary" title="Editar" onClick={() => setEditing(item)}><Pencil size={16} /></Button> : null}
                         <Button variant="secondary" title="Histórico" onClick={() => openHistory(item)}><History size={16} /></Button>
                         {advanceLabel[stage] && ctx.profile.role !== "CONFERENTE" ? <Button onClick={() => advance(item)}><Send size={16} /> {advanceLabel[stage]}</Button> : null}
                       </div>

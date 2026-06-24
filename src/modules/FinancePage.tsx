@@ -39,24 +39,29 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
   const totalSold = monthSales.reduce((sum, sale) => sum + sale.sold_value, 0);
   const totalReceived = monthPayments.reduce((sum, payment) => sum + payment.amount, 0);
   const rate = commissionRate(totalReceived);
+  const canManageFinance = ctx.profile.role === "ADMIN_EMPRESA";
 
-  if (ctx.profile.role !== "ADMIN_EMPRESA") {
-    return <div className="rounded-lg border border-line bg-white p-6">Acesso restrito ao ADMIN_EMPRESA.</div>;
+  if (!["ADMIN_EMPRESA", "CONFERENTE"].includes(ctx.profile.role)) {
+    return <div className="rounded-lg border border-line bg-white p-6">Acesso restrito.</div>;
   }
 
   return (
     <section className="grid gap-5">
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className={`grid gap-3 ${canManageFinance ? "md:grid-cols-4" : "md:grid-cols-2"}`}>
         <StatCard label="Total de venda mês" value={formatMoney(totalSold)} />
         <StatCard label="Total que entrou mês" value={formatMoney(totalReceived)} />
-        <StatCard label="Percentual de comissão aplicado" value={`${Math.round(rate * 100)}%`} />
-        <StatCard label="Valor da comissão" value={formatMoney(totalReceived * rate)} />
+        {canManageFinance ? (
+          <>
+            <StatCard label="Percentual de comissão aplicado" value={`${Math.round(rate * 100)}%`} />
+            <StatCard label="Valor da comissão" value={formatMoney(totalReceived * rate)} />
+          </>
+        ) : null}
       </div>
       <div className="flex flex-col gap-3 rounded-lg border border-line bg-white p-4 md:flex-row md:items-end">
         <Field label="Mês"><input className={inputClass} type="number" min={1} max={12} value={month} onChange={(e) => setMonth(Number(e.target.value))} /></Field>
         <Field label="Ano"><input className={inputClass} type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} /></Field>
         <Field label="Projetista"><select className={inputClass} value={designerId} onChange={(e) => setDesignerId(e.target.value)}><option value="">Todos</option>{designers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></Field>
-        <Button className="md:ml-auto" onClick={() => setModal(true)}><Plus size={17} /> Cadastrar venda</Button>
+        {canManageFinance ? <Button className="md:ml-auto" onClick={() => setModal(true)}><Plus size={17} /> Cadastrar venda</Button> : null}
       </div>
       <section className="overflow-hidden rounded-lg border border-line bg-white">
         <div className="border-b border-line p-4 font-bold">Tabela de vendas</div>
@@ -90,7 +95,7 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
           </table>
         </div>
       </section>
-      {modal ? <SaleModal ctx={ctx} designers={designers} onClose={() => setModal(false)} onDone={() => { setModal(false); load(); }} /> : null}
+      {modal && canManageFinance ? <SaleModal ctx={ctx} designers={designers} onClose={() => setModal(false)} onDone={() => { setModal(false); load(); }} /> : null}
     </section>
   );
 }
