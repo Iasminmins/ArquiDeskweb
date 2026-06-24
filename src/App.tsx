@@ -7,6 +7,7 @@ import { canAccess } from "./lib/permissions";
 import { AuthPage } from "./components/AuthPage";
 import { Layout } from "./components/Layout";
 import { Toasts, type ToastMessage } from "./components/Toast";
+import { LandingPage } from "./components/LandingPage";
 import { Dashboard } from "./modules/Dashboard";
 import { SchedulePage } from "./modules/SchedulePage";
 import { StagePage } from "./modules/StagePage";
@@ -17,14 +18,19 @@ import { CompanySettings } from "./modules/CompanySettings";
 import { EmployeesPage } from "./modules/EmployeesPage";
 import { SubscriptionPage } from "./modules/SubscriptionPage";
 import { SuperAdminPage } from "./modules/SuperAdminPage";
+import type { PlanId } from "./lib/plans";
 
 export type AppContext = {
   profile: Profile;
   company: Company | null;
   subscription: Subscription | null;
+  selectedPlan: PlanId | null;
+  clearSelectedPlan: () => void;
   toast: (type: "success" | "error", text: string) => void;
   refreshShell: () => Promise<void>;
 };
+
+type PublicScreen = "landing" | "login" | "signup";
 
 const stageByNav: Partial<Record<NavKey, "PROJETO" | "NEGOCIACAO" | "CONFERENCIA" | "MONTAGEM" | "ASSISTENCIA" | "FINALIZADO">> = {
   projects: "PROJETO",
@@ -41,6 +47,11 @@ export default function App() {
   const [company, setCompany] = useState<Company | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [active, setActive] = useState<NavKey>("dashboard");
+  const [publicScreen, setPublicScreen] = useState<PublicScreen>("landing");
+  const [selectedPlan, setSelectedPlan] = useState<PlanId | null>(() => {
+    const stored = localStorage.getItem("arquidesk:selectedPlan");
+    return stored === "start" || stored === "professional" || stored === "business" ? stored : null;
+  });
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -103,12 +114,55 @@ export default function App() {
   }, []);
 
   const ctx = useMemo<AppContext | null>(
-    () => (profile ? { profile, company, subscription, toast, refreshShell: () => loadShell() } : null),
-    [profile, company, subscription],
+    () => (profile ? {
+      profile,
+      company,
+      subscription,
+      selectedPlan,
+      clearSelectedPlan: () => {
+        localStorage.removeItem("arquidesk:selectedPlan");
+        setSelectedPlan(null);
+      },
+      toast,
+      refreshShell: () => loadShell(),
+    } : null),
+    [profile, company, subscription, selectedPlan],
   );
 
   if (loading) return <div className="grid min-h-screen place-items-center bg-fog text-ink">Carregando Arquidesk...</div>;
-  if (!session || !ctx) return <><AuthPage onToast={toast} onAuthReady={() => loadShell()} /><Toasts messages={toasts} /></>;
+  if (!session || !ctx) {
+    return (
+      <>
+        {publicScreen === "landing" ? (
+          <LandingPage
+            onLogin={() => {
+              setSelectedPlan(null);
+              localStorage.removeItem("arquidesk:selectedPlan");
+              setPublicScreen("login");
+            }}
+            onSignup={() => {
+              setSelectedPlan(null);
+              localStorage.removeItem("arquidesk:selectedPlan");
+              setPublicScreen("signup");
+            }}
+            onSelectPlan={(planId) => {
+              setSelectedPlan(planId);
+              localStorage.setItem("arquidesk:selectedPlan", planId);
+              setPublicScreen("signup");
+            }}
+          />
+        ) : (
+          <AuthPage
+            initialMode={publicScreen}
+            onBack={() => setPublicScreen("landing")}
+            onToast={toast}
+            onAuthReady={() => loadShell()}
+          />
+        )}
+        <Toasts messages={toasts} />
+      </>
+    );
+  }
 
   const blocked = subscription?.status === "CANCELED" || subscription?.status === "BLOCKED";
   const protectedBySubscription = !["subscription", "company-settings"].includes(active);

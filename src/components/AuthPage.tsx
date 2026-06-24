@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2 } from "lucide-react";
+import { ArrowLeft, Building2 } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { Button, Field, inputClass } from "./ui";
 
@@ -8,10 +8,12 @@ type AuthMode = "login" | "signup";
 type AuthPageProps = {
   onToast: (type: "success" | "error", text: string) => void;
   onAuthReady: () => Promise<void>;
+  initialMode?: AuthMode;
+  onBack?: () => void;
 };
 
-export function AuthPage({ onToast, onAuthReady }: AuthPageProps) {
-  const [mode, setMode] = useState<AuthMode>("login");
+export function AuthPage({ onToast, onAuthReady, initialMode = "login", onBack }: AuthPageProps) {
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -78,6 +80,12 @@ export function AuthPage({ onToast, onAuthReady }: AuthPageProps) {
       </section>
       <section className="flex items-center justify-center p-6">
         <form onSubmit={handleSubmit} className="w-full max-w-md rounded-lg border border-line bg-white p-6 shadow-soft">
+          {onBack ? (
+            <button type="button" onClick={onBack} className="mb-4 inline-flex min-h-10 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold text-ink transition hover:bg-fog">
+              <ArrowLeft size={16} />
+              Voltar para a página inicial
+            </button>
+          ) : null}
           <div className="grid grid-cols-2 rounded-md border border-line bg-fog p-1 text-sm font-semibold">
             <button
               className={`rounded px-3 py-2 transition ${mode === "login" ? "bg-white text-ink shadow-sm" : "text-ink/60"}`}

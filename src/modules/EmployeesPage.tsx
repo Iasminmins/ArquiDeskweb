@@ -4,6 +4,7 @@ import type { AppContext } from "../App";
 import { Button, Field, inputClass } from "../components/ui";
 import { createAuthOnlyClient, supabase } from "../lib/supabase";
 import type { Profile, Role } from "../lib/types";
+import { planLabel, planUserLimit } from "../lib/plans";
 
 export function EmployeesPage({ ctx }: { ctx: AppContext }) {
   const [employees, setEmployees] = useState<Profile[]>([]);
@@ -30,6 +31,10 @@ export function EmployeesPage({ ctx }: { ctx: AppContext }) {
   async function create(event: React.FormEvent) {
     event.preventDefault();
     if (!ctx.profile.company_id) return;
+    const userLimit = planUserLimit(ctx.subscription?.plan);
+    if (employees.length >= userLimit) {
+      return ctx.toast("error", `Seu plano atual permite até ${userLimit} usuários. Para adicionar mais pessoas, faça upgrade ou adicione usuários extras.`);
+    }
     setCreating(true);
 
     const cleanEmail = email.trim();
@@ -91,6 +96,9 @@ export function EmployeesPage({ ctx }: { ctx: AppContext }) {
 
   return (
     <section className="grid gap-5">
+      <div className="rounded-lg border border-line bg-white p-4 text-sm text-ink/70">
+        Plano atual: <strong className="text-ink">{ctx.subscription ? planLabel(ctx.subscription.plan) : "Profissional"}</strong> · Usuários: <strong className="text-ink">{employees.length}/{planUserLimit(ctx.subscription?.plan)}</strong>
+      </div>
       <form onSubmit={create} className="grid gap-3 rounded-lg border border-line bg-white p-4 xl:grid-cols-[1fr_1fr_180px_180px_auto] xl:items-end">
         <Field label="Nome">
           <input className={inputClass} value={name} onChange={(event) => setName(event.target.value)} required />

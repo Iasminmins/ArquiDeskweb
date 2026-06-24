@@ -110,9 +110,12 @@ export type FlowHistory = {
 export type Subscription = {
   id: string;
   company_id: string;
-  plan: "ESSENCIAL" | "PROFISSIONAL" | "PREMIUM";
+  plan: "START" | "PROFESSIONAL" | "BUSINESS" | "ESSENCIAL" | "PROFISSIONAL" | "PREMIUM";
   status: SubscriptionStatus;
   current_period_start: string | null;
   current_period_end: string | null;
   trial_ends_at: string | null;
+  provider?: string | null;
+  external_customer_id?: string | null;
+  external_subscription_id?: string | null;
 };
