@@ -62,6 +62,7 @@ export function StagePage({ ctx, stage }: { ctx: AppContext; stage: Stage }) {
 
   const canEditStage = ctx.profile.role !== "CONFERENTE" || ["CONFERENCIA", "MONTAGEM", "ASSISTENCIA"].includes(stage);
   const canDeleteProject = ctx.profile.role === "ADMIN_EMPRESA" || ctx.profile.role === "PROJETISTA";
+  const canCreateInStage = ctx.profile.role !== "CONFERENTE" && ["PROJETO", "ASSISTENCIA"].includes(stage);
 
   async function advance(project: ClientProject) {
     const to = nextStage[project.current_stage];
@@ -156,7 +157,7 @@ export function StagePage({ ctx, stage }: { ctx: AppContext; stage: Stage }) {
         <input className="min-h-10 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-moss md:max-w-sm" placeholder="Filtrar por cliente, projeto ou projetista" value={filter} onChange={(event) => setFilter(event.target.value)} />
         <div className="flex gap-2 md:ml-auto">
           <Button variant="secondary" onClick={exportRows}><Download size={17} /> Exportar</Button>
-          {stage === "PROJETO" && ctx.profile.role !== "CONFERENTE" ? <Button onClick={() => setEditing("new")}><Plus size={17} /> Criar projeto</Button> : null}
+          {canCreateInStage ? <Button onClick={() => setEditing("new")}><Plus size={17} /> {stage === "ASSISTENCIA" ? "Criar assistencia" : "Criar projeto"}</Button> : null}
         </div>
       </div>
 
@@ -228,7 +229,7 @@ export function StagePage({ ctx, stage }: { ctx: AppContext; stage: Stage }) {
       ) : null}
 
       {editing ? (
-        <Modal title={editing === "new" ? "Criar projeto" : `Editar ${stageTitle[stage]}`} onClose={() => setEditing(null)}>
+        <Modal title={editing === "new" ? `Criar ${stageTitle[stage].toLowerCase()}` : `Editar ${stageTitle[stage]}`} onClose={() => setEditing(null)}>
           <ProjectForm ctx={ctx} stage={stage} project={editing === "new" ? undefined : editing} onDone={() => { setEditing(null); load(); }} />
         </Modal>
       ) : null}
