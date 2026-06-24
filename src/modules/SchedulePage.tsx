@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AppContext } from "../App";
-import { Field, inputClass } from "../components/ui";
+import { Field, inputClass, Modal } from "../components/ui";
 import { formatDate, monthRange } from "../lib/format";
 import type { ClientProject, Stage } from "../lib/types";
 import { getProjects, stageTitle } from "./data";
@@ -72,6 +72,7 @@ export function SchedulePage({ ctx }: { ctx: AppContext }) {
   const [year, setYear] = useState(now.getFullYear());
   const [projects, setProjects] = useState<ClientProject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   async function load() {
     if (!ctx.profile.company_id) return;
@@ -100,6 +101,7 @@ export function SchedulePage({ ctx }: { ctx: AppContext }) {
 
   const calendar = useMemo(() => calendarDays(year, month), [year, month]);
   const monthName = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(year, month - 1, 1));
+  const selectedItems = selectedDate ? grouped[selectedDate] || [] : [];
 
   return (
     <section className="grid gap-5">
@@ -143,10 +145,10 @@ export function SchedulePage({ ctx }: { ctx: AppContext }) {
                 {calendar.map((day) => {
                   const dayItems = grouped[day.date] || [];
                   return (
-                    <div key={day.date} className={`relative grid aspect-square place-items-center rounded-md border text-sm font-semibold ${day.inMonth ? "border-line bg-white text-ink" : "border-transparent bg-fog/50 text-ink/30"}`}>
+                    <button key={day.date} type="button" onClick={() => setSelectedDate(day.date)} className={`relative grid aspect-square place-items-center rounded-md border text-sm font-semibold transition hover:border-moss hover:bg-fog ${day.inMonth ? "border-line bg-white text-ink" : "border-transparent bg-fog/50 text-ink/30"}`}>
                       <span className={`grid h-9 w-9 place-items-center rounded-full ${day.isToday ? "bg-ink text-white" : ""}`}>{day.day}</span>
                       {dayItems.length ? <span className="absolute bottom-1.5 h-1.5 w-1.5 rounded-full bg-moss" title={`${dayItems.length} agendamento${dayItems.length === 1 ? "" : "s"}`} /> : null}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -188,6 +190,33 @@ export function SchedulePage({ ctx }: { ctx: AppContext }) {
           ) : null}
         </section>
       </div>
+      {selectedDate ? (
+        <Modal title={`Agendamentos - ${formatDate(selectedDate)}`} onClose={() => setSelectedDate(null)} width="max-w-2xl">
+          {selectedItems.length ? (
+            <div className="grid gap-3">
+              {selectedItems.map((item) => (
+                <article key={item.id} className="rounded-md border border-line p-4">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <strong>{item.title}</strong>
+                      <span className="block text-sm text-ink/60">{item.project.client_name} · {item.project.project_name}</span>
+                    </div>
+                    <span className="w-fit rounded bg-fog px-2 py-1 text-xs font-semibold text-ink/65">{stageTitle[item.stage]}</span>
+                  </div>
+                  <div className="mt-3 grid gap-1 text-sm text-ink/65 md:grid-cols-2">
+                    <span>Projetista: {item.project.designer?.name || "-"}</span>
+                    <span>Etapa atual: {stageTitle[item.project.current_stage]}</span>
+                    <span>Cliente: {item.project.client_name}</span>
+                    <span>Telefone: {item.project.client_phone || "-"}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-md border border-line bg-fog p-4 text-sm text-ink/60">Nenhum agendamento marcado para este dia.</div>
+          )}
+        </Modal>
+      ) : null}
     </section>
   );
 }
