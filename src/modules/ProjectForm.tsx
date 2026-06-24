@@ -119,11 +119,11 @@ export function ProjectForm({
         company_id: ctx.profile.company_id,
         client_project_id: data.id,
         to_stage: stage,
-        action: `Criado em ${stage === "ASSISTENCIA" ? "Assistencia" : "Projeto"}`,
+        action: `Criado em ${stage === "ASSISTENCIA" ? "Assistência" : "Projeto"}`,
         user_id: ctx.profile.id,
       }).then(() => undefined);
     }
-    ctx.toast("success", project ? "Projeto atualizado com sucesso." : stage === "ASSISTENCIA" ? "Assistencia criada com sucesso." : "Projeto criado com sucesso.");
+    ctx.toast("success", project ? "Projeto atualizado com sucesso." : stage === "ASSISTENCIA" ? "Assistência criada com sucesso." : "Projeto criado com sucesso.");
     onDone();
   }
 

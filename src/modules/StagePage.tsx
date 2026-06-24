@@ -157,7 +157,7 @@ export function StagePage({ ctx, stage }: { ctx: AppContext; stage: Stage }) {
         <input className="min-h-10 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-moss md:max-w-sm" placeholder="Filtrar por cliente, projeto ou projetista" value={filter} onChange={(event) => setFilter(event.target.value)} />
         <div className="flex gap-2 md:ml-auto">
           <Button variant="secondary" onClick={exportRows}><Download size={17} /> Exportar</Button>
-          {canCreateInStage ? <Button onClick={() => setEditing("new")}><Plus size={17} /> {stage === "ASSISTENCIA" ? "Criar assistencia" : "Criar projeto"}</Button> : null}
+          {canCreateInStage ? <Button onClick={() => setEditing("new")}><Plus size={17} /> {stage === "ASSISTENCIA" ? "Criar assistência" : "Criar projeto"}</Button> : null}
         </div>
       </div>
 

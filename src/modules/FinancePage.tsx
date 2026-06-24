@@ -89,7 +89,7 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
     if (!window.confirm(`Excluir a venda "${sale.project_name}" de ${sale.client_name}?`)) return;
     const { error } = await supabase.from("financial_sales").delete().eq("id", sale.id);
     if (error) return ctx.toast("error", error.message);
-    ctx.toast("success", "Venda excluida com sucesso.");
+    ctx.toast("success", "Venda excluída com sucesso.");
     load();
   }
 
@@ -108,20 +108,20 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
     const { data, error } = await query;
     if (error) return ctx.toast("error", error.message);
     setCommissionSettingId(data.id);
-    ctx.toast("success", "Comissao do mes atualizada.");
+    ctx.toast("success", "Comissão do mês atualizada.");
   }
 
   return (
     <section className="grid gap-5">
       <div className="grid gap-3 md:grid-cols-4">
-        <StatCard label="Total de venda mes" value={formatMoney(totalSold)} />
-        <StatCard label="Total que entrou mes" value={formatMoney(totalReceived)} />
-        <StatCard label="Percentual de comissao do mes" value={formatPercent(monthlyCommissionPercent)} />
-        <StatCard label="Valor da comissao" value={formatMoney(totalCommission)} />
+        <StatCard label="Total de venda mês" value={formatMoney(totalSold)} />
+        <StatCard label="Total que entrou mês" value={formatMoney(totalReceived)} />
+        <StatCard label="Percentual de comissão do mês" value={formatPercent(monthlyCommissionPercent)} />
+        <StatCard label="Valor da comissão" value={formatMoney(totalCommission)} />
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-line bg-white p-4 md:flex-row md:items-end">
-        <Field label="Mes">
+        <Field label="Mês">
           <input className={inputClass} type="number" min={1} max={12} value={month} onChange={(event) => setMonth(Number(event.target.value))} />
         </Field>
         <Field label="Ano">
@@ -141,10 +141,10 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
             </select>
           </Field>
         )}
-        <Field label="Comissao do mes (%)">
+        <Field label="Comissão do mês (%)">
           <input className={inputClass} type="number" min="0" step="0.01" value={commissionPercent} onChange={(event) => setCommissionPercent(event.target.value)} disabled={!canWriteFinance} />
         </Field>
-        {canWriteFinance ? <Button type="button" variant="secondary" onClick={saveCommissionPercent}>Salvar comissao</Button> : null}
+        {canWriteFinance ? <Button type="button" variant="secondary" onClick={saveCommissionPercent}>Salvar comissão</Button> : null}
         {canWriteFinance ? <Button className="md:ml-auto" onClick={() => setModal("new")}><Plus size={17} /> Cadastrar venda</Button> : null}
       </div>
 
@@ -163,7 +163,7 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
                 <th className="p-3">Total recebido</th>
                 <th className="p-3">Em aberto</th>
                 <th className="p-3">Status</th>
-                {canWriteFinance ? <th className="p-3 text-right">Acoes</th> : null}
+                {canWriteFinance ? <th className="p-3 text-right">Ações</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -198,7 +198,7 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
       </section>
 
       <section className="overflow-hidden rounded-lg border border-line bg-white">
-        <div className="border-b border-line p-4 font-bold">Pagamentos do mes</div>
+        <div className="border-b border-line p-4 font-bold">Pagamentos do mês</div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="bg-fog text-xs uppercase text-ink/60">
@@ -206,7 +206,7 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
                 <th className="p-3">Cliente</th>
                 <th className="p-3">Projeto</th>
                 <th className="p-3">Projetista</th>
-                <th className="p-3">No.</th>
+                <th className="p-3">Nº</th>
                 <th className="p-3">Valor pago</th>
                 <th className="p-3">Data</th>
                 <th className="p-3">Forma</th>
@@ -354,7 +354,7 @@ function SaleModal({
               ))}
             </select>
           </Field>
-          <Field label="Projetista responsavel">
+          <Field label="Projetista responsável">
             <select className={inputClass} value={designerId} onChange={(event) => setDesignerId(event.target.value)} required disabled={isDesigner}>
               <option value="">Selecione</option>
               {designers.map((designer) => (
@@ -378,7 +378,7 @@ function SaleModal({
             <input className={inputClass} type="date" value={saleDate} onChange={(event) => setSaleDate(event.target.value)} required />
           </Field>
         </div>
-        <Field label="Observacoes">
+        <Field label="Observações">
           <textarea className={`${inputClass} min-h-20`} value={notes} onChange={(event) => setNotes(event.target.value)} />
         </Field>
         <section className="grid gap-3 rounded-lg border border-line p-4">
@@ -397,7 +397,7 @@ function SaleModal({
           ))}
           <Button type="button" variant="secondary" onClick={() => setPayments((items) => [...items, { amount: "", payment_date: new Date().toISOString().slice(0, 10) }])}><Plus size={16} /> Adicionar pagamento</Button>
         </section>
-        <div className="flex justify-end"><Button>{sale ? "Salvar alteracoes" : "Salvar venda"}</Button></div>
+        <div className="flex justify-end"><Button>{sale ? "Salvar alterações" : "Salvar venda"}</Button></div>
       </form>
     </Modal>
   );
