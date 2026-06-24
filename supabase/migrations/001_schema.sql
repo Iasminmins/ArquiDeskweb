@@ -71,6 +71,7 @@ create table public.financial_sales (
   client_name text not null,
   project_name text not null,
   sold_value numeric(14,2) not null check (sold_value >= 0),
+  commission_percent numeric(6,3) not null default 0 check (commission_percent >= 0),
   payment_method text not null,
   sale_date date not null,
   notes text,

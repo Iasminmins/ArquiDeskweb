@@ -2,12 +2,20 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AppContext } from "../App";
 import { Button, Field, inputClass, Modal, StatCard } from "../components/ui";
-import { commissionRate, formatDate, formatMoney, monthRange } from "../lib/format";
+import { formatDate, formatMoney, monthRange } from "../lib/format";
 import { supabase } from "../lib/supabase";
 import type { FinancialSale, Profile } from "../lib/types";
 import { getDesigners, getProjects, getSales } from "./data";
 
 type PaymentDraft = { amount: string; payment_date: string };
+
+function commissionValue(sale: FinancialSale) {
+  return (sale.sold_value * Number(sale.commission_percent || 0)) / 100;
+}
+
+function formatPercent(value: number) {
+  return `${value.toFixed(2).replace(".", ",")}%`;
+}
 
 export function FinancePage({ ctx }: { ctx: AppContext }) {
   const now = new Date();
@@ -40,12 +48,17 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
 
   const { start, end } = monthRange(year, month);
   const activeDesignerId = isDesigner ? ctx.profile.id : designerId;
-  const filteredSales = sales.filter((sale) => (!activeDesignerId || sale.designer_id === activeDesignerId));
+  const filteredSales = sales.filter((sale) => !activeDesignerId || sale.designer_id === activeDesignerId);
   const monthSales = filteredSales.filter((sale) => sale.sale_date >= start && sale.sale_date <= end);
-  const monthPayments = filteredSales.flatMap((sale) => (sale.payments || []).map((payment) => ({ ...payment, sale }))).filter((payment) => payment.payment_date >= start && payment.payment_date <= end);
+  const monthPayments = filteredSales
+    .flatMap((sale) => (sale.payments || []).map((payment) => ({ ...payment, sale })))
+    .filter((payment) => payment.payment_date >= start && payment.payment_date <= end);
   const totalSold = monthSales.reduce((sum, sale) => sum + sale.sold_value, 0);
   const totalReceived = monthPayments.reduce((sum, payment) => sum + payment.amount, 0);
-  const rate = commissionRate(totalReceived);
+  const totalCommission = monthSales.reduce((sum, sale) => sum + commissionValue(sale), 0);
+  const averageCommission = monthSales.length
+    ? monthSales.reduce((sum, sale) => sum + Number(sale.commission_percent || 0), 0) / monthSales.length
+    : 0;
 
   if (!["ADMIN_EMPRESA", "CONFERENTE", "PROJETISTA"].includes(ctx.profile.role)) {
     return <div className="rounded-lg border border-line bg-white p-6">Acesso restrito.</div>;
@@ -55,30 +68,39 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
     if (!window.confirm(`Excluir a venda "${sale.project_name}" de ${sale.client_name}?`)) return;
     const { error } = await supabase.from("financial_sales").delete().eq("id", sale.id);
     if (error) return ctx.toast("error", error.message);
-    ctx.toast("success", "Venda excluída com sucesso.");
+    ctx.toast("success", "Venda excluida com sucesso.");
     load();
   }
 
   return (
     <section className="grid gap-5">
-      <div className={`grid gap-3 ${isAdmin ? "md:grid-cols-4" : "md:grid-cols-2"}`}>
-        <StatCard label="Total de venda mês" value={formatMoney(totalSold)} />
-        <StatCard label="Total que entrou mês" value={formatMoney(totalReceived)} />
-        {isAdmin ? (
-          <>
-            <StatCard label="Percentual de comissão aplicado" value={`${Math.round(rate * 100)}%`} />
-            <StatCard label="Valor da comissão" value={formatMoney(totalReceived * rate)} />
-          </>
-        ) : null}
+      <div className="grid gap-3 md:grid-cols-4">
+        <StatCard label="Total de venda mes" value={formatMoney(totalSold)} />
+        <StatCard label="Total que entrou mes" value={formatMoney(totalReceived)} />
+        <StatCard label="Percentual medio de comissao" value={formatPercent(averageCommission)} />
+        <StatCard label="Valor da comissao" value={formatMoney(totalCommission)} />
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-line bg-white p-4 md:flex-row md:items-end">
-        <Field label="Mês"><input className={inputClass} type="number" min={1} max={12} value={month} onChange={(e) => setMonth(Number(e.target.value))} /></Field>
-        <Field label="Ano"><input className={inputClass} type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} /></Field>
+        <Field label="Mes">
+          <input className={inputClass} type="number" min={1} max={12} value={month} onChange={(event) => setMonth(Number(event.target.value))} />
+        </Field>
+        <Field label="Ano">
+          <input className={inputClass} type="number" value={year} onChange={(event) => setYear(Number(event.target.value))} />
+        </Field>
         {isDesigner ? (
-          <Field label="Projetista"><input className={inputClass} value={ctx.profile.name} disabled /></Field>
+          <Field label="Projetista">
+            <input className={inputClass} value={ctx.profile.name} disabled />
+          </Field>
         ) : (
-          <Field label="Projetista"><select className={inputClass} value={designerId} onChange={(e) => setDesignerId(e.target.value)}><option value="">Todos</option>{designers.map((designer) => <option key={designer.id} value={designer.id}>{designer.name}</option>)}</select></Field>
+          <Field label="Projetista">
+            <select className={inputClass} value={designerId} onChange={(event) => setDesignerId(event.target.value)}>
+              <option value="">Todos</option>
+              {designers.map((designer) => (
+                <option key={designer.id} value={designer.id}>{designer.name}</option>
+              ))}
+            </select>
+          </Field>
         )}
         {canWriteFinance ? <Button className="md:ml-auto" onClick={() => setModal("new")}><Plus size={17} /> Cadastrar venda</Button> : null}
       </div>
@@ -86,7 +108,7 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
       <section className="overflow-hidden rounded-lg border border-line bg-white">
         <div className="border-b border-line p-4 font-bold">Tabela de vendas</div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px] text-left text-sm">
+          <table className="w-full min-w-[1200px] text-left text-sm">
             <thead className="bg-fog text-xs uppercase text-ink/60">
               <tr>
                 <th className="p-3">Cliente</th>
@@ -97,8 +119,9 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
                 <th className="p-3">Data</th>
                 <th className="p-3">Total recebido</th>
                 <th className="p-3">Em aberto</th>
+                <th className="p-3">Comissao</th>
                 <th className="p-3">Status</th>
-                {canWriteFinance ? <th className="p-3 text-right">Ações</th> : null}
+                {canWriteFinance ? <th className="p-3 text-right">Acoes</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -115,6 +138,10 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
                     <td className="p-3">{formatDate(sale.sale_date)}</td>
                     <td className="p-3">{formatMoney(received)}</td>
                     <td className="p-3">{formatMoney(Math.max(0, sale.sold_value - received))}</td>
+                    <td className="p-3">
+                      <span className="block">{formatPercent(Number(sale.commission_percent || 0))}</span>
+                      <span className="block text-xs text-ink/55">{formatMoney(commissionValue(sale))}</span>
+                    </td>
                     <td className="p-3">{status}</td>
                     {canWriteFinance ? (
                       <td className="p-3 text-right">
@@ -133,18 +160,49 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
       </section>
 
       <section className="overflow-hidden rounded-lg border border-line bg-white">
-        <div className="border-b border-line p-4 font-bold">Pagamentos do mês</div>
+        <div className="border-b border-line p-4 font-bold">Pagamentos do mes</div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="bg-fog text-xs uppercase text-ink/60">
-              <tr><th className="p-3">Cliente</th><th className="p-3">Projeto</th><th className="p-3">Projetista</th><th className="p-3">Nº</th><th className="p-3">Valor pago</th><th className="p-3">Data</th><th className="p-3">Forma</th></tr>
+              <tr>
+                <th className="p-3">Cliente</th>
+                <th className="p-3">Projeto</th>
+                <th className="p-3">Projetista</th>
+                <th className="p-3">No.</th>
+                <th className="p-3">Valor pago</th>
+                <th className="p-3">Data</th>
+                <th className="p-3">Forma</th>
+              </tr>
             </thead>
-            <tbody>{monthPayments.map((payment) => <tr key={payment.id} className="border-t border-line"><td className="p-3">{payment.sale.client_name}</td><td className="p-3">{payment.sale.project_name}</td><td className="p-3">{payment.sale.designer?.name || "-"}</td><td className="p-3">{payment.payment_number}</td><td className="p-3">{formatMoney(payment.amount)}</td><td className="p-3">{formatDate(payment.payment_date)}</td><td className="p-3">{payment.sale.payment_method}</td></tr>)}</tbody>
+            <tbody>
+              {monthPayments.map((payment) => (
+                <tr key={payment.id} className="border-t border-line">
+                  <td className="p-3">{payment.sale.client_name}</td>
+                  <td className="p-3">{payment.sale.project_name}</td>
+                  <td className="p-3">{payment.sale.designer?.name || "-"}</td>
+                  <td className="p-3">{payment.payment_number}</td>
+                  <td className="p-3">{formatMoney(payment.amount)}</td>
+                  <td className="p-3">{formatDate(payment.payment_date)}</td>
+                  <td className="p-3">{payment.sale.payment_method}</td>
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
       </section>
 
-      {modal && canWriteFinance ? <SaleModal ctx={ctx} designers={designers} sale={modal === "new" ? undefined : modal} onClose={() => setModal(null)} onDone={() => { setModal(null); load(); }} /> : null}
+      {modal && canWriteFinance ? (
+        <SaleModal
+          ctx={ctx}
+          designers={designers}
+          sale={modal === "new" ? undefined : modal}
+          onClose={() => setModal(null)}
+          onDone={() => {
+            setModal(null);
+            load();
+          }}
+        />
+      ) : null}
     </section>
   );
 }
@@ -168,26 +226,29 @@ function SaleModal({
   const [projectName, setProjectName] = useState(sale?.project_name || "");
   const [designerId, setDesignerId] = useState(sale?.designer_id || (ctx.profile.role === "PROJETISTA" ? ctx.profile.id : ""));
   const [soldValue, setSoldValue] = useState(sale ? String(sale.sold_value) : "");
+  const [commissionPercent, setCommissionPercent] = useState(sale ? String(sale.commission_percent || 0) : "0");
   const [paymentMethod, setPaymentMethod] = useState(sale?.payment_method || "Pix");
   const [saleDate, setSaleDate] = useState(sale?.sale_date || new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState(sale?.notes || "");
   const [payments, setPayments] = useState<PaymentDraft[]>(
     sale?.payments?.length
       ? [...sale.payments].sort((a, b) => a.payment_number - b.payment_number).map((payment) => ({ amount: String(payment.amount), payment_date: payment.payment_date }))
-      : [{ amount: "", payment_date: new Date().toISOString().slice(0, 10) }]
+      : [{ amount: "", payment_date: new Date().toISOString().slice(0, 10) }],
   );
 
   const isDesigner = ctx.profile.role === "PROJETISTA";
 
   useEffect(() => {
     if (!ctx.profile.company_id) return;
-    getProjects(ctx.profile.company_id, undefined, isDesigner ? ctx.profile : undefined).then(({ data }) => setProjects((data || []).map((project) => ({
-      id: project.id,
-      client_name: project.client_name,
-      project_name: project.project_name,
-      designer_id: project.designer_id,
-      closed_value: project.closed_value,
-    }))));
+    getProjects(ctx.profile.company_id, undefined, isDesigner ? ctx.profile : undefined).then(({ data }) =>
+      setProjects((data || []).map((project) => ({
+        id: project.id,
+        client_name: project.client_name,
+        project_name: project.project_name,
+        designer_id: project.designer_id,
+        closed_value: project.closed_value,
+      }))),
+    );
   }, [ctx.profile.company_id, ctx.profile.id, ctx.profile.role]);
 
   function selectProject(id: string) {
@@ -211,6 +272,7 @@ function SaleModal({
       client_name: clientName,
       project_name: projectName,
       sold_value: Number(soldValue),
+      commission_percent: Number(commissionPercent || 0),
       payment_method: paymentMethod,
       sale_date: saleDate,
       notes: notes || null,
@@ -248,28 +310,61 @@ function SaleModal({
     <Modal title={sale ? "Editar venda" : "Cadastrar venda"} onClose={onClose}>
       <form onSubmit={save} className="grid gap-5">
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Vincular a projeto existente"><select className={inputClass} value={clientProjectId} onChange={(event) => selectProject(event.target.value)}><option value="">Venda avulsa</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.client_name} - {project.project_name}</option>)}</select></Field>
-          <Field label="Projetista responsável"><select className={inputClass} value={designerId} onChange={(event) => setDesignerId(event.target.value)} required disabled={isDesigner}><option value="">Selecione</option>{designers.map((designer) => <option key={designer.id} value={designer.id}>{designer.name}</option>)}</select></Field>
-          <Field label="Cliente"><input className={inputClass} value={clientName} onChange={(event) => setClientName(event.target.value)} required /></Field>
-          <Field label="Projeto"><input className={inputClass} value={projectName} onChange={(event) => setProjectName(event.target.value)} required /></Field>
-          <Field label="Valor vendido"><input className={inputClass} type="number" min="0" step="0.01" value={soldValue} onChange={(event) => setSoldValue(event.target.value)} required /></Field>
-          <Field label="Forma de pagamento"><input className={inputClass} value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} required /></Field>
-          <Field label="Data da venda"><input className={inputClass} type="date" value={saleDate} onChange={(event) => setSaleDate(event.target.value)} required /></Field>
+          <Field label="Vincular a projeto existente">
+            <select className={inputClass} value={clientProjectId} onChange={(event) => selectProject(event.target.value)}>
+              <option value="">Venda avulsa</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>{project.client_name} - {project.project_name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Projetista responsavel">
+            <select className={inputClass} value={designerId} onChange={(event) => setDesignerId(event.target.value)} required disabled={isDesigner}>
+              <option value="">Selecione</option>
+              {designers.map((designer) => (
+                <option key={designer.id} value={designer.id}>{designer.name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Cliente">
+            <input className={inputClass} value={clientName} onChange={(event) => setClientName(event.target.value)} required />
+          </Field>
+          <Field label="Projeto">
+            <input className={inputClass} value={projectName} onChange={(event) => setProjectName(event.target.value)} required />
+          </Field>
+          <Field label="Valor vendido">
+            <input className={inputClass} type="number" min="0" step="0.01" value={soldValue} onChange={(event) => setSoldValue(event.target.value)} required />
+          </Field>
+          <Field label="Comissao (%)">
+            <input className={inputClass} type="number" min="0" step="0.01" value={commissionPercent} onChange={(event) => setCommissionPercent(event.target.value)} />
+          </Field>
+          <Field label="Forma de pagamento">
+            <input className={inputClass} value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} required />
+          </Field>
+          <Field label="Data da venda">
+            <input className={inputClass} type="date" value={saleDate} onChange={(event) => setSaleDate(event.target.value)} required />
+          </Field>
         </div>
-        <Field label="Observações"><textarea className={`${inputClass} min-h-20`} value={notes} onChange={(event) => setNotes(event.target.value)} /></Field>
+        <Field label="Observacoes">
+          <textarea className={`${inputClass} min-h-20`} value={notes} onChange={(event) => setNotes(event.target.value)} />
+        </Field>
         <section className="grid gap-3 rounded-lg border border-line p-4">
           <h3 className="font-bold">Pagamentos recebidos</h3>
           {payments.map((payment, index) => (
             <div key={index} className="grid gap-3 md:grid-cols-[120px_1fr_1fr_auto] md:items-end">
-              <strong>{index + 1}º pagamento</strong>
-              <Field label="Valor"><input className={inputClass} type="number" min="0" step="0.01" value={payment.amount} onChange={(event) => setPayments((items) => items.map((item, i) => i === index ? { ...item, amount: event.target.value } : item))} /></Field>
-              <Field label="Data"><input className={inputClass} type="date" value={payment.payment_date} onChange={(event) => setPayments((items) => items.map((item, i) => i === index ? { ...item, payment_date: event.target.value } : item))} /></Field>
+              <strong>{index + 1}o pagamento</strong>
+              <Field label="Valor">
+                <input className={inputClass} type="number" min="0" step="0.01" value={payment.amount} onChange={(event) => setPayments((items) => items.map((item, i) => i === index ? { ...item, amount: event.target.value } : item))} />
+              </Field>
+              <Field label="Data">
+                <input className={inputClass} type="date" value={payment.payment_date} onChange={(event) => setPayments((items) => items.map((item, i) => i === index ? { ...item, payment_date: event.target.value } : item))} />
+              </Field>
               <Button type="button" variant="secondary" onClick={() => setPayments((items) => items.filter((_, i) => i !== index))} disabled={payments.length === 1}><Trash2 size={16} /></Button>
             </div>
           ))}
           <Button type="button" variant="secondary" onClick={() => setPayments((items) => [...items, { amount: "", payment_date: new Date().toISOString().slice(0, 10) }])}><Plus size={16} /> Adicionar pagamento</Button>
         </section>
-        <div className="flex justify-end"><Button>{sale ? "Salvar alterações" : "Salvar venda"}</Button></div>
+        <div className="flex justify-end"><Button>{sale ? "Salvar alteracoes" : "Salvar venda"}</Button></div>
       </form>
     </Modal>
   );

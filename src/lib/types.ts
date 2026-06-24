@@ -64,6 +64,7 @@ export type FinancialSale = {
   client_name: string;
   project_name: string;
   sold_value: number;
+  commission_percent: number | null;
   payment_method: string;
   sale_date: string;
   notes: string | null;

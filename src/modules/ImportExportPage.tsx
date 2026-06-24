@@ -206,6 +206,7 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
         client_name: text(row, "Cliente"),
         project_name: text(row, "Projeto"),
         sold_value: numberValue(row, "Valor vendido"),
+        commission_percent: numberValue(row, "Comissao (%)"),
         payment_method: text(row, "Forma de pagamento"),
         sale_date: dateValue(row, "Data da venda"),
         notes: text(row, "Observacoes") || null,
@@ -342,6 +343,8 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
       Projeto: sale.project_name,
       Projetista: sale.designer?.name || "",
       "Valor vendido": sale.sold_value,
+      "Comissao (%)": sale.commission_percent || 0,
+      "Valor comissao": (sale.sold_value * Number(sale.commission_percent || 0)) / 100,
       "Forma de pagamento": sale.payment_method,
       "Data da venda": sale.sale_date,
       Observacoes: sale.notes || "",
@@ -419,6 +422,8 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
       projeto: item.project_name,
       projetista: item.designer?.name || "",
       valor: item.sold_value || item.closed_value || "",
+      comissao_percentual: item.commission_percent || "",
+      valor_comissao: item.sold_value ? (item.sold_value * Number(item.commission_percent || 0)) / 100 : "",
       data: item.sale_date || item.closing_date || item.entry_date || "",
     }));
     if (format === "xlsx") {
