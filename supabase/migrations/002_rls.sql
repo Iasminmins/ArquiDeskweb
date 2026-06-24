@@ -184,7 +184,10 @@ create policy subscriptions_select on public.subscriptions for select using (pub
 create policy subscriptions_super_admin on public.subscriptions for all using (public.is_super_admin()) with check (public.is_super_admin());
 
 create policy imports_select on public.import_batches for select using (public.is_super_admin() or company_id = public.current_company_id());
-create policy imports_insert on public.import_batches for insert with check (company_id = public.current_company_id() and public.is_admin_empresa());
+create policy imports_insert on public.import_batches for insert with check (
+  company_id = public.current_company_id()
+  and public.current_role() in ('ADMIN_EMPRESA', 'PROJETISTA')
+);
 
 create policy exports_select on public.export_logs for select using (public.is_super_admin() or company_id = public.current_company_id());
 create policy exports_insert on public.export_logs for insert with check (company_id = public.current_company_id());

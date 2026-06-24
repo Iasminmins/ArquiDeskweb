@@ -90,13 +90,15 @@ function normalizeDesignerName(name: string) {
 }
 
 export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string }) {
+  const admin = ctx.profile.role === "ADMIN_EMPRESA";
+  const designer = ctx.profile.role === "PROJETISTA";
+  const canImport = admin || designer;
   const [type, setType] = useState("Completo Arquidesk");
   const [rows, setRows] = useState<PreviewRow[]>([]);
   const [sheets, setSheets] = useState<ImportSheets>({});
   const [summary, setSummary] = useState<ImportSummary[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
-  const admin = ctx.profile.role === "ADMIN_EMPRESA";
 
   async function parseFile(file: File) {
     const buffer = await file.arrayBuffer();
@@ -107,8 +109,8 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
         Projetos: sheetRows(workbook, "Projetos"),
         "Vendas financeiras": sheetRows(workbook, "Vendas financeiras"),
         "Pagamentos financeiros": sheetRows(workbook, "Pagamentos financeiros"),
-        "Metas dos projetistas": sheetRows(workbook, "Metas dos projetistas"),
-        Funcionarios: sheetRows(workbook, "Funcionarios"),
+        "Metas dos projetistas": admin ? sheetRows(workbook, "Metas dos projetistas") : [],
+        Funcionarios: admin ? sheetRows(workbook, "Funcionarios") : [],
       };
       setSheets(parsed);
       setRows(parsed.Projetos || []);
@@ -158,11 +160,11 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
 
   async function insertProjects(companyId: string, designerMap: Map<string, string>) {
     const projectRows = type === "Completo Arquidesk" ? sheets.Projetos || [] : rows;
-    if (!projectRows.length) return new Map<string, string>();
+    if (!projectRows.length || !["Completo Arquidesk", "Projetos"].includes(type)) return new Map<string, string>();
 
     const payload = projectRows.map((row) => ({
       company_id: companyId,
-      designer_id: designerMap.get(normalizeDesignerName(text(row, "Projetista responsavel"))) || null,
+      designer_id: designer ? ctx.profile.id : designerMap.get(normalizeDesignerName(text(row, "Projetista responsavel"))) || null,
       client_name: text(row, "Nome do cliente"),
       client_address: text(row, "Endereco do cliente") || null,
       client_phone: text(row, "Telefone"),
@@ -195,14 +197,14 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
 
   async function insertSales(companyId: string, designerMap: Map<string, string>, projectMap: Map<string, string>) {
     const salesRows = type === "Completo Arquidesk" ? sheets["Vendas financeiras"] || [] : rows;
-    if (!salesRows.length || type === "Projetos") return new Map<string, string>();
+    if (!salesRows.length || !["Completo Arquidesk", "Vendas financeiras"].includes(type)) return new Map<string, string>();
 
     const payload = salesRows.map((row) => {
       const key = `${normalizeDesignerName(text(row, "Cliente"))}|${normalizeDesignerName(text(row, "Projeto"))}`;
       return {
         company_id: companyId,
         client_project_id: projectMap.get(key) || null,
-        designer_id: designerMap.get(normalizeDesignerName(text(row, "Projetista"))) || null,
+        designer_id: designer ? ctx.profile.id : designerMap.get(normalizeDesignerName(text(row, "Projetista"))) || null,
         client_name: text(row, "Cliente"),
         project_name: text(row, "Projeto"),
         sold_value: numberValue(row, "Valor vendido"),
@@ -213,6 +215,12 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
     });
 
     const { data, error } = await supabase.from("financial_sales").insert(payload).select("id,client_name,project_name");
+    if (error) throw error;
+    return new Map((data || []).map((sale) => [`${normalizeDesignerName(sale.client_name)}|${normalizeDesignerName(sale.project_name)}`, sale.id]));
+  }
+
+  async function loadExistingSaleMap(companyId: string) {
+    const { data, error } = await getSales(companyId, designer ? ctx.profile : undefined);
     if (error) throw error;
     return new Map((data || []).map((sale) => [`${normalizeDesignerName(sale.client_name)}|${normalizeDesignerName(sale.project_name)}`, sale.id]));
   }
@@ -261,16 +269,17 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
   }
 
   async function confirmImport() {
-    if (!ctx.profile.company_id || !admin) return;
+    if (!ctx.profile.company_id || !canImport) return;
     if (errors.length) return ctx.toast("error", "Corrija os erros antes de importar.");
     setImporting(true);
     try {
       const designerMap = await loadDesignerMap(ctx.profile.company_id);
-      await ensureImportProfiles(ctx.profile.company_id, designerMap);
+      if (admin) await ensureImportProfiles(ctx.profile.company_id, designerMap);
       const projectMap = await insertProjects(ctx.profile.company_id, designerMap);
       const saleMap = await insertSales(ctx.profile.company_id, designerMap, projectMap);
-      await insertPayments(ctx.profile.company_id, saleMap);
-      await insertGoals(ctx.profile.company_id, designerMap);
+      const existingSaleMap = await loadExistingSaleMap(ctx.profile.company_id);
+      await insertPayments(ctx.profile.company_id, new Map([...existingSaleMap, ...saleMap]));
+      if (admin) await insertGoals(ctx.profile.company_id, designerMap);
 
       const total = summary.reduce((sum, item) => sum + item.count, 0);
       await supabase.from("import_batches").insert({
@@ -436,11 +445,11 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
   return (
     <section className="grid gap-5">
       <div className="rounded-lg border border-line bg-white p-4">
-        <h2 className="font-bold">{mode === "import-export" ? "Importacao e exportacao" : "Exportacoes permitidas"}</h2>
+        <h2 className="font-bold">{canImport ? "Importacao e exportacao" : "Exportacoes permitidas"}</h2>
         <p className="mt-1 text-sm text-ink/60">As permissoes respeitam companyId e perfil do usuario logado.</p>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        {admin ? (
+        {canImport ? (
           <section className="grid gap-4 rounded-lg border border-line bg-white p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="font-bold">Importar</h3>
@@ -452,7 +461,7 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
                 <option>Projetos</option>
                 <option>Vendas financeiras</option>
                 <option>Pagamentos financeiros</option>
-                <option>Metas dos projetistas</option>
+                {admin ? <option>Metas dos projetistas</option> : null}
               </select>
             </Field>
             <Field label="Arquivo CSV ou XLSX"><input className={inputClass} type="file" accept=".csv,.xlsx,.xls" onChange={(event) => event.target.files?.[0] && parseFile(event.target.files[0])} /></Field>
@@ -460,6 +469,7 @@ export function ImportExportPage({ ctx, mode }: { ctx: AppContext; mode: string 
               <div className="rounded-md border border-line bg-fog p-3 text-sm">
                 {summary.map((item) => <p key={item.label}>{item.label}: <strong>{item.count}</strong> linha(s)</p>)}
                 {summary.some((item) => item.label === "Funcionarios") ? <p className="mt-2 text-xs text-ink/60">Funcionarios importados por Excel criam perfis, mas senhas devem ser criadas pela tela Funcionarios.</p> : null}
+                {designer ? <p className="mt-2 text-xs text-ink/60">Como projetista, os registros importados entram vinculados ao seu usuario.</p> : null}
               </div>
             ) : null}
             {errors.length ? <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errors.slice(0, 8).map((error) => <p key={error}>{error}</p>)}</div> : null}
