@@ -3,6 +3,7 @@ alter table public.profiles enable row level security;
 alter table public.client_projects enable row level security;
 alter table public.financial_sales enable row level security;
 alter table public.financial_payments enable row level security;
+alter table public.financial_commission_settings enable row level security;
 alter table public.designer_goals enable row level security;
 alter table public.flow_history enable row level security;
 alter table public.subscriptions enable row level security;
@@ -137,6 +138,33 @@ create policy payments_designer_delete on public.financial_payments for delete u
     select 1 from public.financial_sales s
     where s.id = financial_sale_id and s.company_id = public.current_company_id() and s.designer_id = auth.uid()
   )
+);
+
+create policy commission_settings_select on public.financial_commission_settings for select using (
+  public.is_super_admin()
+  or (company_id = public.current_company_id() and public.current_role() in ('ADMIN_EMPRESA', 'CONFERENTE'))
+  or (company_id = public.current_company_id() and public.current_role() = 'PROJETISTA' and designer_id = auth.uid())
+);
+create policy commission_settings_admin_write on public.financial_commission_settings for all using (
+  company_id = public.current_company_id()
+  and public.is_admin_empresa()
+) with check (
+  company_id = public.current_company_id()
+  and public.is_admin_empresa()
+);
+create policy commission_settings_designer_insert on public.financial_commission_settings for insert with check (
+  company_id = public.current_company_id()
+  and public.current_role() = 'PROJETISTA'
+  and designer_id = auth.uid()
+);
+create policy commission_settings_designer_update on public.financial_commission_settings for update using (
+  company_id = public.current_company_id()
+  and public.current_role() = 'PROJETISTA'
+  and designer_id = auth.uid()
+) with check (
+  company_id = public.current_company_id()
+  and public.current_role() = 'PROJETISTA'
+  and designer_id = auth.uid()
 );
 
 create policy goals_select on public.designer_goals for select using (

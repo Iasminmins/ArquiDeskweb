@@ -9,10 +9,6 @@ import { getDesigners, getProjects, getSales } from "./data";
 
 type PaymentDraft = { amount: string; payment_date: string };
 
-function commissionValue(sale: FinancialSale) {
-  return (sale.sold_value * Number(sale.commission_percent || 0)) / 100;
-}
-
 function formatPercent(value: number) {
   return `${value.toFixed(2).replace(".", ",")}%`;
 }
@@ -25,6 +21,8 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
   const [sales, setSales] = useState<FinancialSale[]>([]);
   const [designers, setDesigners] = useState<Pick<Profile, "id" | "name" | "email">[]>([]);
   const [modal, setModal] = useState<FinancialSale | "new" | null>(null);
+  const [commissionSettingId, setCommissionSettingId] = useState("");
+  const [commissionPercent, setCommissionPercent] = useState("0");
 
   const isAdmin = ctx.profile.role === "ADMIN_EMPRESA";
   const isDesigner = ctx.profile.role === "PROJETISTA";
@@ -48,6 +46,31 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
 
   const { start, end } = monthRange(year, month);
   const activeDesignerId = isDesigner ? ctx.profile.id : designerId;
+
+  async function loadCommissionSetting() {
+    if (!ctx.profile.company_id) return;
+    let query = supabase
+      .from("financial_commission_settings")
+      .select("id,commission_percent")
+      .eq("company_id", ctx.profile.company_id)
+      .eq("month", month)
+      .eq("year", year);
+    query = activeDesignerId ? query.eq("designer_id", activeDesignerId) : query.is("designer_id", null);
+    const { data, error } = await query.maybeSingle();
+    if (error) {
+      ctx.toast("error", error.message);
+      setCommissionSettingId("");
+      setCommissionPercent("0");
+      return;
+    }
+    setCommissionSettingId(data?.id || "");
+    setCommissionPercent(String(data?.commission_percent || 0));
+  }
+
+  useEffect(() => {
+    loadCommissionSetting();
+  }, [ctx.profile.company_id, activeDesignerId, month, year]);
+
   const filteredSales = sales.filter((sale) => !activeDesignerId || sale.designer_id === activeDesignerId);
   const monthSales = filteredSales.filter((sale) => sale.sale_date >= start && sale.sale_date <= end);
   const monthPayments = filteredSales
@@ -55,10 +78,8 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
     .filter((payment) => payment.payment_date >= start && payment.payment_date <= end);
   const totalSold = monthSales.reduce((sum, sale) => sum + sale.sold_value, 0);
   const totalReceived = monthPayments.reduce((sum, payment) => sum + payment.amount, 0);
-  const totalCommission = monthSales.reduce((sum, sale) => sum + commissionValue(sale), 0);
-  const averageCommission = monthSales.length
-    ? monthSales.reduce((sum, sale) => sum + Number(sale.commission_percent || 0), 0) / monthSales.length
-    : 0;
+  const monthlyCommissionPercent = Number(commissionPercent || 0);
+  const totalCommission = (totalReceived * monthlyCommissionPercent) / 100;
 
   if (!["ADMIN_EMPRESA", "CONFERENTE", "PROJETISTA"].includes(ctx.profile.role)) {
     return <div className="rounded-lg border border-line bg-white p-6">Acesso restrito.</div>;
@@ -72,12 +93,30 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
     load();
   }
 
+  async function saveCommissionPercent() {
+    if (!ctx.profile.company_id || !canWriteFinance) return;
+    const payload = {
+      company_id: ctx.profile.company_id,
+      designer_id: activeDesignerId || null,
+      month,
+      year,
+      commission_percent: Number(commissionPercent || 0),
+    };
+    const query = commissionSettingId
+      ? supabase.from("financial_commission_settings").update(payload).eq("id", commissionSettingId).select("id").single()
+      : supabase.from("financial_commission_settings").insert(payload).select("id").single();
+    const { data, error } = await query;
+    if (error) return ctx.toast("error", error.message);
+    setCommissionSettingId(data.id);
+    ctx.toast("success", "Comissao do mes atualizada.");
+  }
+
   return (
     <section className="grid gap-5">
       <div className="grid gap-3 md:grid-cols-4">
         <StatCard label="Total de venda mes" value={formatMoney(totalSold)} />
         <StatCard label="Total que entrou mes" value={formatMoney(totalReceived)} />
-        <StatCard label="Percentual medio de comissao" value={formatPercent(averageCommission)} />
+        <StatCard label="Percentual de comissao do mes" value={formatPercent(monthlyCommissionPercent)} />
         <StatCard label="Valor da comissao" value={formatMoney(totalCommission)} />
       </div>
 
@@ -102,13 +141,17 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
             </select>
           </Field>
         )}
+        <Field label="Comissao do mes (%)">
+          <input className={inputClass} type="number" min="0" step="0.01" value={commissionPercent} onChange={(event) => setCommissionPercent(event.target.value)} disabled={!canWriteFinance} />
+        </Field>
+        {canWriteFinance ? <Button type="button" variant="secondary" onClick={saveCommissionPercent}>Salvar comissao</Button> : null}
         {canWriteFinance ? <Button className="md:ml-auto" onClick={() => setModal("new")}><Plus size={17} /> Cadastrar venda</Button> : null}
       </div>
 
       <section className="overflow-hidden rounded-lg border border-line bg-white">
         <div className="border-b border-line p-4 font-bold">Tabela de vendas</div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1200px] text-left text-sm">
+          <table className="w-full min-w-[1100px] text-left text-sm">
             <thead className="bg-fog text-xs uppercase text-ink/60">
               <tr>
                 <th className="p-3">Cliente</th>
@@ -119,7 +162,6 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
                 <th className="p-3">Data</th>
                 <th className="p-3">Total recebido</th>
                 <th className="p-3">Em aberto</th>
-                <th className="p-3">Comissao</th>
                 <th className="p-3">Status</th>
                 {canWriteFinance ? <th className="p-3 text-right">Acoes</th> : null}
               </tr>
@@ -138,10 +180,6 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
                     <td className="p-3">{formatDate(sale.sale_date)}</td>
                     <td className="p-3">{formatMoney(received)}</td>
                     <td className="p-3">{formatMoney(Math.max(0, sale.sold_value - received))}</td>
-                    <td className="p-3">
-                      <span className="block">{formatPercent(Number(sale.commission_percent || 0))}</span>
-                      <span className="block text-xs text-ink/55">{formatMoney(commissionValue(sale))}</span>
-                    </td>
                     <td className="p-3">{status}</td>
                     {canWriteFinance ? (
                       <td className="p-3 text-right">
@@ -226,7 +264,6 @@ function SaleModal({
   const [projectName, setProjectName] = useState(sale?.project_name || "");
   const [designerId, setDesignerId] = useState(sale?.designer_id || (ctx.profile.role === "PROJETISTA" ? ctx.profile.id : ""));
   const [soldValue, setSoldValue] = useState(sale ? String(sale.sold_value) : "");
-  const [commissionPercent, setCommissionPercent] = useState(sale ? String(sale.commission_percent || 0) : "0");
   const [paymentMethod, setPaymentMethod] = useState(sale?.payment_method || "Pix");
   const [saleDate, setSaleDate] = useState(sale?.sale_date || new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState(sale?.notes || "");
@@ -272,7 +309,6 @@ function SaleModal({
       client_name: clientName,
       project_name: projectName,
       sold_value: Number(soldValue),
-      commission_percent: Number(commissionPercent || 0),
       payment_method: paymentMethod,
       sale_date: saleDate,
       notes: notes || null,
@@ -334,9 +370,6 @@ function SaleModal({
           </Field>
           <Field label="Valor vendido">
             <input className={inputClass} type="number" min="0" step="0.01" value={soldValue} onChange={(event) => setSoldValue(event.target.value)} required />
-          </Field>
-          <Field label="Comissao (%)">
-            <input className={inputClass} type="number" min="0" step="0.01" value={commissionPercent} onChange={(event) => setCommissionPercent(event.target.value)} />
           </Field>
           <Field label="Forma de pagamento">
             <input className={inputClass} value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} required />

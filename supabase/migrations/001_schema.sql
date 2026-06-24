@@ -71,7 +71,6 @@ create table public.financial_sales (
   client_name text not null,
   project_name text not null,
   sold_value numeric(14,2) not null check (sold_value >= 0),
-  commission_percent numeric(6,3) not null default 0 check (commission_percent >= 0),
   payment_method text not null,
   sale_date date not null,
   notes text,
@@ -131,6 +130,17 @@ create table public.subscriptions (
   updated_at timestamptz not null default now()
 );
 
+create table public.financial_commission_settings (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  designer_id uuid references public.profiles(id) on delete cascade,
+  month int not null check (month between 1 and 12),
+  year int not null check (year >= 2000),
+  commission_percent numeric(6,3) not null default 0 check (commission_percent >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table public.import_batches (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
@@ -158,6 +168,9 @@ create index on public.profiles(company_id, role);
 create index on public.client_projects(company_id, current_stage);
 create index on public.client_projects(company_id, designer_id);
 create index on public.financial_sales(company_id, sale_date);
+create index on public.financial_commission_settings(company_id, month, year);
+create unique index financial_commission_settings_company_month_unique on public.financial_commission_settings(company_id, month, year) where designer_id is null;
+create unique index financial_commission_settings_designer_month_unique on public.financial_commission_settings(company_id, designer_id, month, year) where designer_id is not null;
 create index on public.financial_payments(company_id, payment_date);
 create index on public.designer_goals(company_id, month, year);
 create index on public.flow_history(company_id, client_project_id, created_at desc);
@@ -175,4 +188,5 @@ create trigger touch_profiles before update on public.profiles for each row exec
 create trigger touch_client_projects before update on public.client_projects for each row execute function public.touch_updated_at();
 create trigger touch_financial_sales before update on public.financial_sales for each row execute function public.touch_updated_at();
 create trigger touch_financial_payments before update on public.financial_payments for each row execute function public.touch_updated_at();
+create trigger touch_financial_commission_settings before update on public.financial_commission_settings for each row execute function public.touch_updated_at();
 create trigger touch_designer_goals before update on public.designer_goals for each row execute function public.touch_updated_at();
