@@ -83,6 +83,20 @@ create policy sales_select on public.financial_sales for select using (
   or (company_id = public.current_company_id() and public.current_role() = 'PROJETISTA' and designer_id = auth.uid())
 );
 create policy sales_admin_write on public.financial_sales for all using (company_id = public.current_company_id() and public.is_admin_empresa()) with check (company_id = public.current_company_id() and public.is_admin_empresa());
+create policy sales_designer_insert on public.financial_sales for insert with check (
+  company_id = public.current_company_id()
+  and public.current_role() = 'PROJETISTA'
+  and designer_id = auth.uid()
+);
+create policy sales_designer_update on public.financial_sales for update using (
+  company_id = public.current_company_id()
+  and public.current_role() = 'PROJETISTA'
+  and designer_id = auth.uid()
+) with check (
+  company_id = public.current_company_id()
+  and public.current_role() = 'PROJETISTA'
+  and designer_id = auth.uid()
+);
 
 create policy payments_select on public.financial_payments for select using (
   public.is_super_admin()
@@ -93,6 +107,37 @@ create policy payments_select on public.financial_payments for select using (
   )
 );
 create policy payments_admin_write on public.financial_payments for all using (company_id = public.current_company_id() and public.is_admin_empresa()) with check (company_id = public.current_company_id() and public.is_admin_empresa());
+create policy payments_designer_insert on public.financial_payments for insert with check (
+  company_id = public.current_company_id()
+  and public.current_role() = 'PROJETISTA'
+  and exists (
+    select 1 from public.financial_sales s
+    where s.id = financial_sale_id and s.company_id = public.current_company_id() and s.designer_id = auth.uid()
+  )
+);
+create policy payments_designer_update on public.financial_payments for update using (
+  company_id = public.current_company_id()
+  and public.current_role() = 'PROJETISTA'
+  and exists (
+    select 1 from public.financial_sales s
+    where s.id = financial_sale_id and s.company_id = public.current_company_id() and s.designer_id = auth.uid()
+  )
+) with check (
+  company_id = public.current_company_id()
+  and public.current_role() = 'PROJETISTA'
+  and exists (
+    select 1 from public.financial_sales s
+    where s.id = financial_sale_id and s.company_id = public.current_company_id() and s.designer_id = auth.uid()
+  )
+);
+create policy payments_designer_delete on public.financial_payments for delete using (
+  company_id = public.current_company_id()
+  and public.current_role() = 'PROJETISTA'
+  and exists (
+    select 1 from public.financial_sales s
+    where s.id = financial_sale_id and s.company_id = public.current_company_id() and s.designer_id = auth.uid()
+  )
+);
 
 create policy goals_select on public.designer_goals for select using (
   public.is_super_admin()
