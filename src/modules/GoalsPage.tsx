@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Trash2 } from "lucide-react";
 import type { AppContext } from "../App";
 import { Button, Field, inputClass, StatCard } from "../components/ui";
 import { formatMoney, monthRange } from "../lib/format";
@@ -36,12 +37,14 @@ export function GoalsPage({ ctx, mode }: { ctx: AppContext; mode: "goals" | "my-
   const rows = useMemo(() => {
     const allowedDesigners = mode === "my-goal" ? designers.filter((d) => d.id === ctx.profile.id) : designers;
     return allowedDesigners.map((designer) => {
-      const goal = goals.find((item) => item.designer_id === designer.id)?.goal_amount || 0;
+      const goalItem = goals.find((item) => item.designer_id === designer.id);
+      const goal = goalItem?.goal_amount || 0;
       const designerSales = sales.filter((sale) => sale.designer_id === designer.id && sale.sale_date >= start && sale.sale_date <= end);
       const closed = designerSales.reduce((sum, sale) => sum + sale.sold_value, 0);
       return {
         designer,
         goal,
+        goalId: goalItem?.id || null,
         closed,
         missing: Math.max(0, goal - closed),
         percent: goal ? Math.round((closed / goal) * 100) : 0,
@@ -65,6 +68,14 @@ export function GoalsPage({ ctx, mode }: { ctx: AppContext; mode: "goals" | "my-
     ctx.toast("success", "Meta atualizada com sucesso.");
     setDesignerId("");
     setAmount("");
+    load();
+  }
+
+  async function deleteGoal(goalId: string, designerName: string) {
+    if (!window.confirm(`Excluir a meta de ${designerName}?`)) return;
+    const { error } = await supabase.from("designer_goals").delete().eq("id", goalId);
+    if (error) return ctx.toast("error", error.message);
+    ctx.toast("success", "Meta excluida com sucesso.");
     load();
   }
 
@@ -95,8 +106,8 @@ export function GoalsPage({ ctx, mode }: { ctx: AppContext; mode: "goals" | "my-
         <div className="border-b border-line p-4 font-bold">{mode === "my-goal" ? "Meus projetos fechados" : "Ranking operacional"}</div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[850px] text-left text-sm">
-            <thead className="bg-fog text-xs uppercase text-ink/60"><tr><th className="p-3">Projetista</th><th className="p-3">Meta</th><th className="p-3">Fechado no mês</th><th className="p-3">Falta</th><th className="p-3">% atingido</th><th className="p-3">Qtd.</th><th className="p-3">Ticket médio</th></tr></thead>
-            <tbody>{rows.sort((a, b) => b.closed - a.closed).map((row) => <tr key={row.designer.id} className="border-t border-line"><td className="p-3">{row.designer.name}</td><td className="p-3">{formatMoney(row.goal)}</td><td className="p-3">{formatMoney(row.closed)}</td><td className="p-3">{formatMoney(row.missing)}</td><td className="p-3">{row.percent}%</td><td className="p-3">{row.count}</td><td className="p-3">{formatMoney(row.ticket)}</td></tr>)}</tbody>
+            <thead className="bg-fog text-xs uppercase text-ink/60"><tr><th className="p-3">Projetista</th><th className="p-3">Meta</th><th className="p-3">Fechado no mês</th><th className="p-3">Falta</th><th className="p-3">% atingido</th><th className="p-3">Qtd.</th><th className="p-3">Ticket médio</th>{mode === "goals" ? <th className="p-3 text-right">Ações</th> : null}</tr></thead>
+            <tbody>{rows.sort((a, b) => b.closed - a.closed).map((row) => <tr key={row.designer.id} className="border-t border-line"><td className="p-3">{row.designer.name}</td><td className="p-3">{formatMoney(row.goal)}</td><td className="p-3">{formatMoney(row.closed)}</td><td className="p-3">{formatMoney(row.missing)}</td><td className="p-3">{row.percent}%</td><td className="p-3">{row.count}</td><td className="p-3">{formatMoney(row.ticket)}</td>{mode === "goals" ? <td className="p-3 text-right">{row.goalId ? <Button variant="danger" title="Excluir" onClick={() => deleteGoal(row.goalId!, row.designer.name)}><Trash2 size={16} /></Button> : null}</td> : null}</tr>)}</tbody>
           </table>
         </div>
       </section>

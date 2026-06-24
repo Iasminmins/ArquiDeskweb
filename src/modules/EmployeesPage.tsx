@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import type { AppContext } from "../App";
 import { Button, Field, inputClass } from "../components/ui";
 import { createAuthOnlyClient, supabase } from "../lib/supabase";
@@ -77,6 +78,17 @@ export function EmployeesPage({ ctx }: { ctx: AppContext }) {
     load();
   }
 
+  async function deleteEmployee(employee: Profile) {
+    if (employee.id === ctx.profile.id) {
+      return ctx.toast("error", "Voce nao pode excluir seu proprio usuario logado.");
+    }
+    if (!window.confirm(`Excluir o funcionario ${employee.name}?`)) return;
+    const { error } = await supabase.from("profiles").delete().eq("id", employee.id);
+    if (error) return ctx.toast("error", error.message);
+    ctx.toast("success", "Funcionario excluido com sucesso.");
+    load();
+  }
+
   return (
     <section className="grid gap-5">
       <form onSubmit={create} className="grid gap-3 rounded-lg border border-line bg-white p-4 xl:grid-cols-[1fr_1fr_180px_180px_auto] xl:items-end">
@@ -118,9 +130,14 @@ export function EmployeesPage({ ctx }: { ctx: AppContext }) {
                 <td className="p-3">{employee.role}</td>
                 <td className="p-3">{employee.active ? "Ativo" : "Inativo"}</td>
                 <td className="p-3 text-right">
-                  <Button variant="secondary" onClick={() => toggle(employee)}>
-                    {employee.active ? "Desativar" : "Ativar"}
-                  </Button>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="secondary" onClick={() => toggle(employee)}>
+                      {employee.active ? "Desativar" : "Ativar"}
+                    </Button>
+                    <Button variant="danger" title="Excluir" onClick={() => deleteEmployee(employee)}>
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}

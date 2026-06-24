@@ -58,7 +58,7 @@ create table public.client_projects (
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint client_projects_designer_id_fkey foreign key (designer_id) references public.profiles(id)
+  constraint client_projects_designer_id_fkey foreign key (designer_id) references public.profiles(id) on delete set null
 );
 
 create table public.financial_sales (
@@ -74,7 +74,7 @@ create table public.financial_sales (
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint financial_sales_designer_id_fkey foreign key (designer_id) references public.profiles(id)
+  constraint financial_sales_designer_id_fkey foreign key (designer_id) references public.profiles(id) on delete set null
 );
 
 create table public.financial_payments (
@@ -99,7 +99,7 @@ create table public.designer_goals (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (company_id, designer_id, month, year),
-  constraint designer_goals_designer_id_fkey foreign key (designer_id) references public.profiles(id)
+  constraint designer_goals_designer_id_fkey foreign key (designer_id) references public.profiles(id) on delete cascade
 );
 
 create table public.flow_history (
@@ -112,7 +112,7 @@ create table public.flow_history (
   user_id uuid,
   notes text,
   created_at timestamptz not null default now(),
-  constraint flow_history_user_id_fkey foreign key (user_id) references public.profiles(id)
+  constraint flow_history_user_id_fkey foreign key (user_id) references public.profiles(id) on delete set null
 );
 
 create table public.subscriptions (

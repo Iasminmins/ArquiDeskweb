@@ -44,6 +44,7 @@ create policy profiles_select on public.profiles for select using (
 );
 create policy profiles_insert_admin on public.profiles for insert with check (company_id = public.current_company_id() and public.is_admin_empresa());
 create policy profiles_update_admin on public.profiles for update using (company_id = public.current_company_id() and public.is_admin_empresa()) with check (company_id = public.current_company_id() and public.is_admin_empresa());
+create policy profiles_delete_admin on public.profiles for delete using (company_id = public.current_company_id() and public.is_admin_empresa());
 
 create policy projects_select on public.client_projects for select using (
   public.is_super_admin()
@@ -68,6 +69,13 @@ create policy projects_update on public.client_projects for update using (
     or (public.current_role() = 'CONFERENTE' and current_stage in ('CONFERENCIA', 'MONTAGEM', 'ASSISTENCIA'))
   )
 ) with check (company_id = public.current_company_id());
+create policy projects_delete on public.client_projects for delete using (
+  company_id = public.current_company_id()
+  and (
+    public.current_role() = 'ADMIN_EMPRESA'
+    or designer_id = auth.uid()
+  )
+);
 
 create policy sales_select on public.financial_sales for select using (
   public.is_super_admin()

@@ -45,6 +45,14 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
     return <div className="rounded-lg border border-line bg-white p-6">Acesso restrito.</div>;
   }
 
+  async function deleteSale(sale: FinancialSale) {
+    if (!window.confirm(`Excluir a venda "${sale.project_name}" de ${sale.client_name}?`)) return;
+    const { error } = await supabase.from("financial_sales").delete().eq("id", sale.id);
+    if (error) return ctx.toast("error", error.message);
+    ctx.toast("success", "Venda excluida com sucesso.");
+    load();
+  }
+
   return (
     <section className="grid gap-5">
       <div className={`grid gap-3 ${canManageFinance ? "md:grid-cols-4" : "md:grid-cols-2"}`}>
@@ -69,7 +77,7 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
           <table className="w-full min-w-[1100px] text-left text-sm">
             <thead className="bg-fog text-xs uppercase text-ink/60">
               <tr>
-                <th className="p-3">Cliente</th><th className="p-3">Projeto</th><th className="p-3">Projetista</th><th className="p-3">Valor vendido</th><th className="p-3">Forma</th><th className="p-3">Data</th><th className="p-3">Total recebido</th><th className="p-3">Em aberto</th><th className="p-3">Status</th>
+                <th className="p-3">Cliente</th><th className="p-3">Projeto</th><th className="p-3">Projetista</th><th className="p-3">Valor vendido</th><th className="p-3">Forma</th><th className="p-3">Data</th><th className="p-3">Total recebido</th><th className="p-3">Em aberto</th><th className="p-3">Status</th>{canManageFinance ? <th className="p-3 text-right">Acoes</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -78,7 +86,7 @@ export function FinancePage({ ctx }: { ctx: AppContext }) {
                 const status = received === 0 ? "Pendente" : received < sale.sold_value ? "Parcial" : "Pago";
                 return (
                   <tr key={sale.id} className="border-t border-line">
-                    <td className="p-3">{sale.client_name}</td><td className="p-3">{sale.project_name}</td><td className="p-3">{sale.designer?.name || "-"}</td><td className="p-3">{formatMoney(sale.sold_value)}</td><td className="p-3">{sale.payment_method}</td><td className="p-3">{formatDate(sale.sale_date)}</td><td className="p-3">{formatMoney(received)}</td><td className="p-3">{formatMoney(Math.max(0, sale.sold_value - received))}</td><td className="p-3">{status}</td>
+                    <td className="p-3">{sale.client_name}</td><td className="p-3">{sale.project_name}</td><td className="p-3">{sale.designer?.name || "-"}</td><td className="p-3">{formatMoney(sale.sold_value)}</td><td className="p-3">{sale.payment_method}</td><td className="p-3">{formatDate(sale.sale_date)}</td><td className="p-3">{formatMoney(received)}</td><td className="p-3">{formatMoney(Math.max(0, sale.sold_value - received))}</td><td className="p-3">{status}</td>{canManageFinance ? <td className="p-3 text-right"><Button variant="danger" title="Excluir" onClick={() => deleteSale(sale)}><Trash2 size={16} /></Button></td> : null}
                   </tr>
                 );
               })}

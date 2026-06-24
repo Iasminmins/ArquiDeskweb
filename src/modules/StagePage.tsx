@@ -1,8 +1,9 @@
-import { Clock, Download, History, Pencil, Plus, Send } from "lucide-react";
+import { Clock, Download, History, Pencil, Plus, Send, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AppContext } from "../App";
 import { Button, EmptyState, Modal } from "../components/ui";
 import { formatDate, formatMoney, toCsv, downloadText } from "../lib/format";
+import { supabase } from "../lib/supabase";
 import type { ClientProject, FlowHistory, Stage } from "../lib/types";
 import { getProjectHistory, getProjects, moveProject, nextStage, stageSuccess, stageTitle } from "./data";
 import { ProjectForm } from "./ProjectForm";
@@ -40,6 +41,7 @@ export function StagePage({ ctx, stage }: { ctx: AppContext; stage: Stage }) {
     return items.filter((item) => `${item.client_name} ${item.project_name} ${item.designer?.name || ""}`.toLowerCase().includes(term));
   }, [items, filter]);
   const canEditStage = ctx.profile.role !== "CONFERENTE" || ["CONFERENCIA", "MONTAGEM", "ASSISTENCIA"].includes(stage);
+  const canDeleteProject = ctx.profile.role === "ADMIN_EMPRESA" || ctx.profile.role === "PROJETISTA";
 
   async function advance(project: ClientProject) {
     const to = nextStage[project.current_stage];
@@ -63,6 +65,14 @@ export function StagePage({ ctx, stage }: { ctx: AppContext; stage: Stage }) {
     const { data, error } = await getProjectHistory(project.id);
     if (error) return ctx.toast("error", error.message);
     setHistory({ project, rows: data || [] });
+  }
+
+  async function deleteProject(project: ClientProject) {
+    if (!window.confirm(`Excluir o projeto "${project.project_name}" de ${project.client_name}?`)) return;
+    const { error } = await supabase.from("client_projects").delete().eq("id", project.id);
+    if (error) return ctx.toast("error", error.message);
+    ctx.toast("success", "Projeto excluido com sucesso.");
+    load();
   }
 
   function exportRows() {
@@ -127,6 +137,7 @@ export function StagePage({ ctx, stage }: { ctx: AppContext; stage: Stage }) {
                       <div className="flex justify-end gap-2">
                         {canEditStage ? <Button variant="secondary" title="Editar" onClick={() => setEditing(item)}><Pencil size={16} /></Button> : null}
                         <Button variant="secondary" title="Histórico" onClick={() => openHistory(item)}><History size={16} /></Button>
+                        {canDeleteProject ? <Button variant="danger" title="Excluir" onClick={() => deleteProject(item)}><Trash2 size={16} /></Button> : null}
                         {advanceLabel[stage] && ctx.profile.role !== "CONFERENTE" ? <Button onClick={() => advance(item)}><Send size={16} /> {advanceLabel[stage]}</Button> : null}
                       </div>
                     </td>
