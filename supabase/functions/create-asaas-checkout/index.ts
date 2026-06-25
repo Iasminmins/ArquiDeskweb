@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     if (!customerResponse.ok) return json({ error: "Não foi possível criar cliente no Asaas.", details: customer }, 502);
 
     const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 14);
+    dueDate.setMonth(dueDate.getMonth() + 1);
     const subscriptionResponse = await fetch(`${asaasBaseUrl}/subscriptions`, {
       method: "POST",
       headers: {

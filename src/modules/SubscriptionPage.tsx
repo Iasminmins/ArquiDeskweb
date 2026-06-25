@@ -47,7 +47,8 @@ export function SubscriptionPage({ ctx, blocked = false }: { ctx: AppContext; bl
 
       <div className="rounded-lg border border-line bg-white p-5">
         <h2 className="font-bold">Planos Arquidesk</h2>
-        <p className="mt-1 text-sm text-ink/65">Todos os planos incluem todas as funcionalidades. Escolha apenas de acordo com o tamanho da sua equipe.</p>
+        <p className="mt-1 text-sm text-ink/65">Todos os planos incluem a plataforma completa. Escolha apenas de acordo com o tamanho da sua equipe.</p>
+        <p className="mt-2 text-sm font-bold text-moss">1 mês grátis para começar.</p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -62,7 +63,7 @@ export function SubscriptionPage({ ctx, blocked = false }: { ctx: AppContext; bl
               {includedFeatures.map((feature) => <li key={feature} className="flex gap-2"><Check size={16} className="mt-0.5 shrink-0 text-moss" /> {feature}</li>)}
             </ul>
             <Button className="mt-5 w-full" variant={plan.highlighted ? "primary" : "secondary"} onClick={() => startCheckout(plan.id)}>
-              Começar agora
+              Começar com 1 mês grátis
             </Button>
           </article>
         ))}

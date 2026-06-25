@@ -90,7 +90,7 @@ export function LandingPage({ onLogin, onSignup, onSelectPlan }: LandingPageProp
             Entrar
           </button>
           <button type="button" onClick={onSignup} className="inline-flex min-h-10 items-center rounded-md bg-ink px-4 text-sm font-bold text-white hover:bg-moss">
-            Criar conta grátis
+            Começar com 1 mês grátis
           </button>
         </div>
       </header>
@@ -107,9 +107,12 @@ export function LandingPage({ onLogin, onSignup, onSelectPlan }: LandingPageProp
           <p className="mt-4 max-w-2xl font-semibold text-moss">
             Todas as funcionalidades liberadas em todos os planos. O valor muda apenas conforme o tamanho da sua equipe.
           </p>
+          <p className="mt-3 max-w-2xl text-sm font-bold text-ink/70">
+            Já utilizado por empresas do setor, como a Casa Contemporânea.
+          </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <button type="button" onClick={onSignup} className="inline-flex min-h-12 items-center justify-center rounded-md bg-ink px-5 font-bold text-white hover:bg-moss">
-              Criar conta grátis
+              Começar com 1 mês grátis
             </button>
             <button type="button" onClick={onLogin} className="inline-flex min-h-12 items-center justify-center rounded-md border border-line bg-white px-5 font-bold hover:bg-fog">
               Entrar
@@ -213,7 +216,8 @@ export function LandingPage({ onLogin, onSignup, onSelectPlan }: LandingPageProp
         <div className="mx-auto max-w-7xl px-4 py-16 md:px-6">
           <div className="mx-auto max-w-3xl text-center">
             <h2 className="text-3xl font-black">Escolha o plano de acordo com o tamanho da sua equipe.</h2>
-            <p className="mt-3 text-ink/70">Todos os planos incluem todas as funcionalidades da plataforma. O que muda é apenas a quantidade de usuários.</p>
+            <p className="mt-3 text-ink/70">Todos os planos incluem a plataforma completa. Escolha de acordo com o tamanho da sua equipe.</p>
+            <p className="mt-2 text-sm font-bold text-moss">Menos que o custo de um erro operacional por mês.</p>
           </div>
           <div className="mt-8 grid gap-4 lg:grid-cols-3">
             {plans.map((plan) => (
@@ -230,14 +234,14 @@ export function LandingPage({ onLogin, onSignup, onSelectPlan }: LandingPageProp
                   ))}
                 </ul>
                 <button type="button" onClick={() => onSelectPlan(plan.id)} className={`mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-md px-4 font-bold ${plan.highlighted ? "bg-ink text-white hover:bg-moss" : "border border-line bg-white hover:bg-fog"}`}>
-                  Começar agora
+                  Começar com 1 mês grátis
                 </button>
               </article>
             ))}
           </div>
           <div className="mt-8 rounded-lg border border-line bg-fog p-5 text-center">
             <p className="font-bold">Usuários adicionais: R$ 49/mês por usuário.</p>
-            <p className="mt-2 text-sm text-ink/65">Teste grátis por 14 dias. Não precisa de cartão no cadastro inicial.</p>
+            <p className="mt-2 text-sm text-ink/65">1 mês grátis. Não precisa de cartão no cadastro inicial.</p>
           </div>
         </div>
       </section>
@@ -249,7 +253,7 @@ export function LandingPage({ onLogin, onSignup, onSelectPlan }: LandingPageProp
         </p>
         <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
           <button type="button" onClick={onSignup} className="inline-flex min-h-12 items-center justify-center rounded-md bg-ink px-5 font-bold text-white hover:bg-moss">
-            Criar conta grátis
+            Começar com 1 mês grátis
           </button>
           <button type="button" onClick={onLogin} className="inline-flex min-h-12 items-center justify-center rounded-md border border-line bg-white px-5 font-bold hover:bg-fog">
             Entrar
